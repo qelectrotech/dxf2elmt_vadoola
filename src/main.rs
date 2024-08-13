@@ -6,6 +6,18 @@
 // TODO: add in logging?
 // TODO: add suppor for missing entities
 // TODO: Add in wild crate for support of wild card expansion on Windows
+// TODO: Add in some unit tests
+// TODO: See if I can find some open licences DXF files I could use to test against
+// TODO: See if i can add any parallelization.
+// NOTE: The dxf crate hasn't had an update in 3 years, I was wondering if there were any other crates worth updating to.
+//       it looks like the answer is no...but the crate isn't completely dead. it hasn't had a release in 3 years, but had
+//       some commits about 5 months ago.
+// NOTE: simple-xml-builder also hasn't had any updates in 3 years (or commits) but a straight forward api. Not sure if this is worth
+//       swapping out for a more maintained crate, but it could be worth looking into
+// NOTE: the bspline crate hasn't had a commit in 2 years, but once again, might not be worth trying to swap. There is stroke which is
+//       slightly more up to date, but has a bunch of extra features that I'm not sure are needed. There is a bsplines crate built on
+//       nalgebra, but looks to be very early stages. What about Kurbo? Part of the Xilem project, activly maintained, but i'm not sure
+//       how stable it is, or if it can actually do what's needed. could be worth looking into.
 
 #![warn(
     clippy::all,
