@@ -1,7 +1,7 @@
 use dxf::entities::Line;
 use simple_xml_builder::XMLElement;
 
-pub fn add_line(line: &Line, description: &mut XMLElement, line_count: &mut u32) {
+pub fn add(line: &Line, description: &mut XMLElement, line_count: &mut u32) {
     let mut line_xml: XMLElement = XMLElement::new("line");
     line_xml.add_attribute("x1", line.p1.x);
     line_xml.add_attribute("y1", -line.p1.y);

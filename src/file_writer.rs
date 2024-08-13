@@ -2,7 +2,7 @@ extern crate tempfile;
 
 use anyhow::Context;
 use std::fs::File;
-use std::io::*;
+use std::io::{Read, Seek, SeekFrom};
 use tempfile::tempfile;
 
 pub fn create_file(verbose_output: bool, _info: bool, file_name: &str) -> File {
@@ -30,7 +30,7 @@ pub fn verbose_print(mut out_file: std::fs::File) -> File {
         .read_to_string(&mut v_contents)
         .context("Could not read output file to a string")
         .unwrap();
-    print!("{}", v_contents);
+    print!("{v_contents}");
 
     out_file
 }

@@ -1,7 +1,7 @@
 use dxf::entities::LwPolyline;
 use simple_xml_builder::XMLElement;
 
-pub fn add_lwpolyline(
+pub fn add(
     lwpolyline: &LwPolyline,
     description: &mut XMLElement,
     lwpolyline_count: &mut u32,

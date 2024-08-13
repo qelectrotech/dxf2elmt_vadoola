@@ -1,7 +1,7 @@
 use dxf::entities::Solid;
 use simple_xml_builder::XMLElement;
 
-pub fn add_solid(solid: &Solid, description: &mut XMLElement, solid_count: &mut u32) {
+pub fn add(solid: &Solid, description: &mut XMLElement, solid_count: &mut u32) {
     let mut solid_xml: XMLElement = XMLElement::new("polygon");
     solid_xml.add_attribute("x1", solid.first_corner.x);
     solid_xml.add_attribute("y1", -solid.first_corner.y);

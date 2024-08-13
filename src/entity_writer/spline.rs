@@ -33,7 +33,7 @@ impl Add for Point {
     }
 }
 
-pub fn add_spline(
+pub fn add(
     spline: &Spline,
     description: &mut XMLElement,
     spline_count: &mut u32,

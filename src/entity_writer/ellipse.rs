@@ -1,7 +1,7 @@
 use dxf::entities::Ellipse;
 use simple_xml_builder::XMLElement;
 
-pub fn add_ellipse(ellipse: &Ellipse, description: &mut XMLElement, ellipse_count: &mut u32) {
+pub fn add(ellipse: &Ellipse, description: &mut XMLElement, ellipse_count: &mut u32) {
     let mut ellipse_xml: XMLElement = XMLElement::new("ellipse");
     ellipse_xml.add_attribute("x", ellipse.center.x - ellipse.major_axis.x);
     ellipse_xml.add_attribute(

@@ -1,7 +1,7 @@
 use dxf::entities::Circle;
 use simple_xml_builder::XMLElement;
 
-pub fn add_circle(circle: &Circle, description: &mut XMLElement, circle_count: &mut u32) {
+pub fn add(circle: &Circle, description: &mut XMLElement, circle_count: &mut u32) {
     let mut circle_xml: XMLElement = XMLElement::new("ellipse");
     circle_xml.add_attribute("x", circle.center.x - circle.radius);
     circle_xml.add_attribute("y", -circle.center.y - circle.radius);

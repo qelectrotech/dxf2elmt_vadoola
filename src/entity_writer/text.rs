@@ -3,7 +3,7 @@ use dxf::entities::Entity;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
 
-pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_count: &mut u32, dynamic_text: bool) {
+pub fn add(text: &Text, e: &Entity, description: &mut XMLElement, text_count: &mut u32, dynamic_text: bool) {
     let mut text_xml: XMLElement = XMLElement::new("");
 
     if dynamic_text{
@@ -20,15 +20,15 @@ pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_coun
         
         text_xml.add_attribute("uuid", format!("{{{}}}", Uuid::new_v4()));
 
-        let mut _tmp = &text.text_style_name[..];
-        if _tmp == "STANDARD" {
-            _tmp = "Arial Narrow";
+        let mut tmp = &text.text_style_name[..];
+        if tmp == "STANDARD" {
+            tmp = "Arial Narrow";
         }
         text_xml.add_attribute(
             "font",
             format!(
                 "{},{},-1,5,0,0,0,0,0,0,normal",
-                _tmp,
+                tmp,
                 text.text_height.ceil()
             ),
         );
@@ -44,9 +44,9 @@ pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_coun
 
         text_xml.add_child(text_field_xml);
 
-        let _temp_color: String = format!("{:x}", e.common.color_24_bit);
+        let temp_color: String = format!("{:x}", e.common.color_24_bit);
         let mut text_color: String = String::new();
-        let mut i: usize = _temp_color.chars().count();
+        let mut i: usize = temp_color.chars().count();
         text_color += "#";
         loop {
             if i >= 6 {
@@ -55,7 +55,7 @@ pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_coun
             text_color += "0";
             i += 1;
         }
-        text_color += &_temp_color;   
+        text_color += &temp_color;
   
         let mut text_color_xml = XMLElement::new("color");
         text_color_xml.add_text(text_color);
@@ -75,9 +75,9 @@ pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_coun
             text_xml.add_attribute("rotation", 0);
         }
     
-        let _temp_color: String = format!("{:x}", e.common.color_24_bit);
+        let temp_color: String = format!("{:x}", e.common.color_24_bit);
         let mut text_color: String = String::new();
-        let mut i: usize = _temp_color.chars().count();
+        let mut i: usize = temp_color.chars().count();
         text_color += "#";
         loop {
             if i >= 6 {
@@ -86,19 +86,19 @@ pub fn add_text(text: &Text, e: &Entity, description: &mut XMLElement, text_coun
             text_color += "0";
             i += 1;
         }
-        text_color += &_temp_color;
+        text_color += &temp_color;
         text_xml.add_attribute("color", text_color);
     
-        let mut _tmp = &text.text_style_name[..];
-        if _tmp == "STANDARD" {
-            _tmp = "Arial Narrow";
+        let mut tmp = &text.text_style_name[..];
+        if tmp == "STANDARD" {
+            tmp = "Arial Narrow";
         }
         text_xml.add_attribute("text", &text.value[..]);
         text_xml.add_attribute(
             "font",
             format!(
                 "{},{},-1,5,0,0,0,0,0,0,normal",
-                _tmp,
+                tmp,
                 text.text_height.ceil()
             ),
         );

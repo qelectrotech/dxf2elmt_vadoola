@@ -7,15 +7,21 @@
 // TODO: add suppor for missing entities
 // TODO: Add in wild crate for support of wild card expansion on Windows
 
+#![warn(
+    clippy::all,
+    clippy::pedantic,
+    //clippy::cargo,
+)]
+
 extern crate dxf;
 extern crate simple_xml_builder;
 
-use anyhow::*;
+use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use dxf::entities::EntityType;
 use dxf::Drawing;
 use simple_xml_builder::XMLElement;
-use std::time::*;
+use std::time::Instant;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "A CLI program to convert .dxf files into .elmt files", long_about = None)]
@@ -59,11 +65,10 @@ fn main() -> Result<()> {
 
     // Load dxf file
     let drawing: Drawing = Drawing::load_file(file_name).context(format!(
-        "Failed to load {}...\n\tMake sure the file is a valid .dxf file.",
-        file_name
+        "Failed to load {file_name}...\n\tMake sure the file is a valid .dxf file."
     ))?;
     if !verbose_output && info {
-        println!("{} loaded...", file_name);
+        println!("{file_name} loaded...");
     }
 
     // Intialize counts
@@ -83,16 +88,16 @@ fn main() -> Result<()> {
     // Loop through all entities, appending to xml file
     drawing.entities().for_each(|e| match e.specific {
         EntityType::Circle(ref circle) => {
-            entity_writer::circle::add_circle(circle, &mut description, &mut circle_count);
+            entity_writer::circle::add(circle, &mut description, &mut circle_count);
         }
         EntityType::Line(ref line) => {
-            entity_writer::line::add_line(line, &mut description, &mut line_count);
+            entity_writer::line::add(line, &mut description, &mut line_count);
         }
         EntityType::Arc(ref arc) => {
-            entity_writer::arc::add_arc(arc, &mut description, &mut arc_count);
+            entity_writer::arc::add(arc, &mut description, &mut arc_count);
         }
         EntityType::Spline(ref spline) => {
-            entity_writer::spline::add_spline(
+            entity_writer::spline::add(
                 spline,
                 &mut description,
                 &mut spline_count,
@@ -100,23 +105,23 @@ fn main() -> Result<()> {
             );
         }
         EntityType::Text(ref text) => {
-            entity_writer::text::add_text(text, e, &mut description, &mut text_count, dtext);
+            entity_writer::text::add(text, e, &mut description, &mut text_count, dtext);
         }
         EntityType::Ellipse(ref ellipse) => {
-            entity_writer::ellipse::add_ellipse(ellipse, &mut description, &mut ellipse_count);
+            entity_writer::ellipse::add(ellipse, &mut description, &mut ellipse_count);
         }
         EntityType::Polyline(ref polyline) => {
-            entity_writer::polyline::add_polyline(polyline, &mut description, &mut polyline_count);
+            entity_writer::polyline::add(polyline, &mut description, &mut polyline_count);
         }
         EntityType::LwPolyline(ref lwpolyline) => {
-            entity_writer::lwpolyline::add_lwpolyline(
+            entity_writer::lwpolyline::add(
                 lwpolyline,
                 &mut description,
                 &mut lwpolyline_count,
             );
         }
         EntityType::Solid(ref solid) => {
-            entity_writer::solid::add_solid(solid, &mut description, &mut solid_count);
+            entity_writer::solid::add(solid, &mut description, &mut solid_count);
         }
         _ => {
             other_count += 1;
@@ -141,16 +146,16 @@ fn main() -> Result<()> {
         // Print stats
         println!("STATS");
         println!("~~~~~~~~~~~~~~~");
-        println!("Circles: {}", circle_count);
-        println!("Lines: {}", line_count);
-        println!("Arcs: {}", arc_count);
-        println!("Splines: {}", spline_count);
-        println!("Texts: {}", text_count);
-        println!("Ellipses: {}", ellipse_count);
-        println!("Polylines: {}", polyline_count);
-        println!("LwPolylines: {}", lwpolyline_count);
-        println!("Solids: {}", solid_count);
-        println!("Currently Unsupported: {}", other_count);
+        println!("Circles: {circle_count}");
+        println!("Lines: {line_count}");
+        println!("Arcs: {arc_count}");
+        println!("Splines: {spline_count}");
+        println!("Texts: {text_count}");
+        println!("Ellipses: {ellipse_count}");
+        println!("Polylines: {polyline_count}");
+        println!("LwPolylines: {lwpolyline_count}");
+        println!("Solids: {solid_count}");
+        println!("Currently Unsupported: {other_count}");
 
         println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
     } else if verbose_output{

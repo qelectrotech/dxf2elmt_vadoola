@@ -1,4 +1,4 @@
-use anyhow::*;
+use anyhow::Context;
 use simple_xml_builder::XMLElement;
 use std::fs::File;
 use uuid::Uuid;

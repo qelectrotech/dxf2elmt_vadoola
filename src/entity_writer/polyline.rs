@@ -1,7 +1,7 @@
 use dxf::entities::Polyline;
 use simple_xml_builder::XMLElement;
 
-pub fn add_polyline(polyline: &Polyline, description: &mut XMLElement, polyline_count: &mut u32) {
+pub fn add(polyline: &Polyline, description: &mut XMLElement, polyline_count: &mut u32) {
     let mut polyline_xml: XMLElement = XMLElement::new("polygon");
     polyline
         .__vertices_and_handles

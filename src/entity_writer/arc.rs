@@ -1,9 +1,7 @@
 use dxf::entities::Arc;
 use simple_xml_builder::XMLElement;
 
-pub fn add_arc(arc: &Arc, description: &mut XMLElement, arc_count: &mut u32) {
-    let mut _temp: f64;
-    
+pub fn add(arc: &Arc, description: &mut XMLElement, arc_count: &mut u32) {
     let mut arc_xml: XMLElement = XMLElement::new("arc");
     arc_xml.add_attribute("x", arc.center.x - arc.radius);
     arc_xml.add_attribute("y", -arc.center.y - arc.radius);
@@ -14,15 +12,17 @@ pub fn add_arc(arc: &Arc, description: &mut XMLElement, arc_count: &mut u32) {
     } else {
         arc_xml.add_attribute("start", arc.start_angle);
     }
-    if arc.start_angle > arc.end_angle {
-        _temp = (360.0 - arc.start_angle) + arc.end_angle;
+    
+    let temp = if arc.start_angle > arc.end_angle {
+        (360.0 - arc.start_angle) + arc.end_angle
     } else {
-        _temp = arc.end_angle - arc.start_angle;
-    }
-    if _temp < 0.0 {
-        arc_xml.add_attribute("angle", -_temp);
+        arc.end_angle - arc.start_angle
+    };
+    
+    if temp < 0.0 {
+        arc_xml.add_attribute("angle", -temp);
     } else {
-        arc_xml.add_attribute("angle", _temp);
+        arc_xml.add_attribute("angle", temp);
     }
     arc_xml.add_attribute("antialias", "false");
     if arc.thickness > 0.1 {
