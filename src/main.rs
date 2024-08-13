@@ -1,3 +1,12 @@
+// TODO: check clippy lints that can get cleaned up
+// TODO: upgrade dependencies
+// TODO: improve error handling
+// TODO: add ability to pass multiple dxf files insead of just a single one
+// TODO: convert file_name in Args to PathBuf
+// TODO: add in logging?
+// TODO: add suppor for missing entities
+// TODO: Add in wild crate for support of wild card expansion on Windows
+
 extern crate dxf;
 extern crate simple_xml_builder;
 
