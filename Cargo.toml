@@ -22,4 +22,4 @@ bspline = "1.1.0"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
 tempfile = "3.12.0"
 clap = { version = "3.2.22", features = ["derive"] }
-anyhow = "1.0.58"
+anyhow = "1.0.86"
