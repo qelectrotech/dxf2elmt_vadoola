@@ -1,8 +1,6 @@
 // TODO: check clippy lints that can get cleaned up
-// TODO: upgrade dependencies
 // TODO: improve error handling
 // TODO: add ability to pass multiple dxf files insead of just a single one
-// TODO: convert file_name in Args to PathBuf
 // TODO: add in logging?
 // TODO: add suppor for missing entities
 // TODO: Add in wild crate for support of wild card expansion on Windows
@@ -33,14 +31,16 @@ use clap::Parser;
 use dxf::entities::EntityType;
 use dxf::Drawing;
 use simple_xml_builder::XMLElement;
+use std::path::PathBuf;
 use std::time::Instant;
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about = "A CLI program to convert .dxf files into .elmt files", long_about = None)]
+#[command(name = "dxf2elmt")]
+#[command(author, version, about = "A CLI program to convert .dxf files into .elmt files", long_about = None)]
 struct Args {
     /// The .dxf file to convert
-    #[clap(short, long, value_parser)]
-    file_name: String,
+    //#[clap(short, long, value_parser)]
+    file_name: PathBuf,
 
     /// Activates verbose output, eliminates .elmt file writing
     #[clap(short, long, value_parser, default_value_t = false)]
@@ -69,18 +69,19 @@ fn main() -> Result<()> {
 
     // Collect arguments
     let args: Args = Args::parse();
-    let file_name: &String = &args.file_name;
+    let file_name = &args.file_name;
     let verbose_output: bool = args.verbose;
     let dtext: bool = args.dtext;
     let spline_step: u32 = args.spline_step;
     let info: bool = !args.info;
 
     // Load dxf file
+    let friendly_file_name = file_name.to_string_lossy();
     let drawing: Drawing = Drawing::load_file(file_name).context(format!(
-        "Failed to load {file_name}...\n\tMake sure the file is a valid .dxf file."
+        "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
     if !verbose_output && info {
-        println!("{file_name} loaded...");
+        println!("{friendly_file_name} loaded...");
     }
 
     // Intialize counts
@@ -143,7 +144,7 @@ fn main() -> Result<()> {
     // Begin creating .elmt file
     let mut definition = elmt_writer::set_definition();
     elmt_writer::set_uuid(&mut definition);
-    elmt_writer::set_names(file_name, &mut definition);
+    elmt_writer::set_names(&friendly_file_name, &mut definition);
     elmt_writer::set_information(&mut definition);
 
     // Create output file for .elmt
