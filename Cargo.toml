@@ -21,5 +21,5 @@ simple-xml-builder = "1.1.0"
 bspline = "1.1.0"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
 tempfile = "3.12.0"
-clap = { version = "3.2.22", features = ["derive"] }
+clap = { version = "4.5.15", features = ["derive"] }
 anyhow = "1.0.86"
