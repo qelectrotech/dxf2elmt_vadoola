@@ -2,8 +2,7 @@
 // TODO: improve error handling
 // TODO: add ability to pass multiple dxf files insead of just a single one
 // TODO: add in logging?
-// TODO: add suppor for missing entities
-// TODO: Add in wild crate for support of wild card expansion on Windows
+// TODO: add support for missing entities
 // TODO: Add in some unit tests
 // TODO: See if I can find some open licences DXF files I could use to test against
 // TODO: See if i can add any parallelization.
@@ -68,7 +67,7 @@ fn main() -> Result<()> {
     let now: Instant = Instant::now();
 
     // Collect arguments
-    let args: Args = Args::parse();
+    let args: Args = Args::parse_from(wild::args());
     let file_name = &args.file_name;
     let verbose_output: bool = args.verbose;
     let dtext: bool = args.dtext;
