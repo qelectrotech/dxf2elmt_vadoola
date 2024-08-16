@@ -1,23 +1,25 @@
 use dxf::entities::Ellipse;
 use simple_xml_builder::XMLElement;
+use super::ToElemt;
 
-pub fn add(ellipse: &Ellipse, description: &mut XMLElement, ellipse_count: &mut u32) {
-    let mut ellipse_xml: XMLElement = XMLElement::new("ellipse");
-    ellipse_xml.add_attribute("x", ellipse.center.x - ellipse.major_axis.x);
-    ellipse_xml.add_attribute(
-        "y",
-        -ellipse.center.y - ellipse.major_axis.x * ellipse.minor_axis_ratio,
-    );
-    ellipse_xml.add_attribute("height", ellipse.major_axis.x * 2.0);
-    ellipse_xml.add_attribute(
-        "width",
-        ellipse.major_axis.x * 2.0 * ellipse.minor_axis_ratio,
-    );
-    ellipse_xml.add_attribute("antialias", "false");
-    ellipse_xml.add_attribute(
-        "style",
-        "line-style:normal;line-weight:thin;filling:none;color:black",
-    );
-    description.add_child(ellipse_xml);
-    *ellipse_count += 1;
+impl ToElemt for Ellipse {
+    fn to_elmt(&self) -> XMLElement {
+        let mut ellipse_xml: XMLElement = XMLElement::new("ellipse");
+        ellipse_xml.add_attribute("x", self.center.x - self.major_axis.x);
+        ellipse_xml.add_attribute(
+            "y",
+            -self.center.y - self.major_axis.x * self.minor_axis_ratio,
+        );
+        ellipse_xml.add_attribute("height", self.major_axis.x * 2.0);
+        ellipse_xml.add_attribute(
+            "width",
+            self.major_axis.x * 2.0 * self.minor_axis_ratio,
+        );
+        ellipse_xml.add_attribute("antialias", "false");
+        ellipse_xml.add_attribute(
+            "style",
+            "line-style:normal;line-weight:thin;filling:none;color:black",
+        );
+        ellipse_xml
+    }
 }

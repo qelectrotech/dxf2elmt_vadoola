@@ -284,6 +284,7 @@ dependencies = [
  "bspline",
  "clap",
  "dxf",
+ "rayon",
  "simple-xml-builder",
  "tempfile",
  "uuid 1.10.0",

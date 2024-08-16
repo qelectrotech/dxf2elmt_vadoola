@@ -1,29 +1,31 @@
 use dxf::entities::Solid;
 use simple_xml_builder::XMLElement;
+use super::ToElemt;
 
-pub fn add(solid: &Solid, description: &mut XMLElement, solid_count: &mut u32) {
-    let mut solid_xml: XMLElement = XMLElement::new("polygon");
-    solid_xml.add_attribute("x1", solid.first_corner.x);
-    solid_xml.add_attribute("y1", -solid.first_corner.y);
-    solid_xml.add_attribute("x2", solid.second_corner.x);
-    solid_xml.add_attribute("y2", -solid.second_corner.y);
-    solid_xml.add_attribute("x3", solid.third_corner.x);
-    solid_xml.add_attribute("y3", -solid.third_corner.y);
-    solid_xml.add_attribute("x4", solid.fourth_corner.x);
-    solid_xml.add_attribute("y4", -solid.fourth_corner.y);
-    solid_xml.add_attribute("closed", "true");
-    solid_xml.add_attribute("antialias", "false");
-    if solid.thickness > 0.5 {
-        solid_xml.add_attribute(
-            "style",
-            "line-style:normal;line-weight:normal;filling:none;color:black",
-        );
-    } else {
-        solid_xml.add_attribute(
-            "style",
-            "line-style:normal;line-weight:thin;filling:none;color:black",
-        );
+impl ToElemt for Solid {
+    fn to_elmt(&self) -> XMLElement {
+        let mut solid_xml: XMLElement = XMLElement::new("polygon");
+        solid_xml.add_attribute("x1", self.first_corner.x);
+        solid_xml.add_attribute("y1", -self.first_corner.y);
+        solid_xml.add_attribute("x2", self.second_corner.x);
+        solid_xml.add_attribute("y2", -self.second_corner.y);
+        solid_xml.add_attribute("x3", self.third_corner.x);
+        solid_xml.add_attribute("y3", -self.third_corner.y);
+        solid_xml.add_attribute("x4", self.fourth_corner.x);
+        solid_xml.add_attribute("y4", -self.fourth_corner.y);
+        solid_xml.add_attribute("closed", "true");
+        solid_xml.add_attribute("antialias", "false");
+        if self.thickness > 0.5 {
+            solid_xml.add_attribute(
+                "style",
+                "line-style:normal;line-weight:normal;filling:none;color:black",
+            );
+        } else {
+            solid_xml.add_attribute(
+                "style",
+                "line-style:normal;line-weight:thin;filling:none;color:black",
+            );
+        }
+        solid_xml
     }
-    description.add_child(solid_xml);
-    *solid_count += 1;
 }

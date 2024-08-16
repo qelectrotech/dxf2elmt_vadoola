@@ -15,6 +15,11 @@
 //       slightly more up to date, but has a bunch of extra features that I'm not sure are needed. There is a bsplines crate built on
 //       nalgebra, but looks to be very early stages. What about Kurbo? Part of the Xilem project, activly maintained, but i'm not sure
 //       how stable it is, or if it can actually do what's needed. could be worth looking into.
+//TODO: looking more closely at the way this is written, I don't feel passing in mutable int's for counts and a mutable XMLElement for updating
+//      is really the best way to do this....probably better to have the add function return a Result<(XMLElement, count), Err, So it's either
+//      returning an error (because there are none or some other failure?) or a count of how many elements plus the element....wait the count
+//      is only ever incremented by 1...why is it inside these functions in the first place.....just return a Result<XMLElement, Err> if it
+//      returns an element increment the count...
 
 #![warn(
     clippy::all,
@@ -32,6 +37,8 @@ use dxf::Drawing;
 use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
+//use rayon::prelude::*;
+use entity_writer::ToElemt;
 
 #[derive(Parser, Debug)]
 #[command(name = "dxf2elmt")]
@@ -99,41 +106,42 @@ fn main() -> Result<()> {
 
     // Loop through all entities, appending to xml file
     drawing.entities().for_each(|e| match e.specific {
+    //drawing.entities().into_iter().par_bridge().for_each(|e| match e.specific {
         EntityType::Circle(ref circle) => {
-            entity_writer::circle::add(circle, &mut description, &mut circle_count);
+            description.add_child(circle.to_elmt());
+            circle_count += 1;
         }
         EntityType::Line(ref line) => {
-            entity_writer::line::add(line, &mut description, &mut line_count);
+            description.add_child(line.to_elmt());
+            line_count += 1;
         }
         EntityType::Arc(ref arc) => {
-            entity_writer::arc::add(arc, &mut description, &mut arc_count);
+            description.add_child(arc.to_elmt());
+            arc_count += 1;
         }
         EntityType::Spline(ref spline) => {
-            entity_writer::spline::add(
-                spline,
-                &mut description,
-                &mut spline_count,
-                spline_step,
-            );
+            description.add_child((spline, spline_step).to_elmt());
+            spline_count += 1;
         }
         EntityType::Text(ref text) => {
-            entity_writer::text::add(text, e, &mut description, &mut text_count, dtext);
+            description.add_child((text, e, dtext).to_elmt());
+            text_count += 1;
         }
         EntityType::Ellipse(ref ellipse) => {
-            entity_writer::ellipse::add(ellipse, &mut description, &mut ellipse_count);
+            description.add_child(ellipse.to_elmt());
+            ellipse_count += 1;
         }
         EntityType::Polyline(ref polyline) => {
-            entity_writer::polyline::add(polyline, &mut description, &mut polyline_count);
+            description.add_child(polyline.to_elmt());
+            polyline_count += 1;
         }
         EntityType::LwPolyline(ref lwpolyline) => {
-            entity_writer::lwpolyline::add(
-                lwpolyline,
-                &mut description,
-                &mut lwpolyline_count,
-            );
+            description.add_child(lwpolyline.to_elmt());
+            lwpolyline_count += 1;
         }
         EntityType::Solid(ref solid) => {
-            entity_writer::solid::add(solid, &mut description, &mut solid_count);
+            description.add_child(solid.to_elmt());
+            solid_count += 1;
         }
         _ => {
             other_count += 1;

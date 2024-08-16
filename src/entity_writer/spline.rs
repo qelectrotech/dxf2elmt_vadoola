@@ -3,6 +3,7 @@ extern crate bspline;
 use dxf::entities::Spline;
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
+use super::ToElemt;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Point {
@@ -33,46 +34,43 @@ impl Add for Point {
     }
 }
 
-pub fn add(
-    spline: &Spline,
-    description: &mut XMLElement,
-    spline_count: &mut u32,
-    spline_step: u32,
-) {
-    let mut i: usize = 0;
-    let mut points: Vec<Point> = Vec::new();
-    for _a in &spline.control_points {
-        points.push(Point::new(
-            spline.control_points[i].x,
-            spline.control_points[i].y,
-        ));
-        i += 1;
+impl ToElemt for (&Spline, u32) {
+    fn to_elmt(&self) -> XMLElement {
+        let (spline, spline_step) = *self;
+        let mut i: usize = 0;
+        let mut points: Vec<Point> = Vec::new();
+        for _a in &spline.control_points {
+            points.push(Point::new(
+                spline.control_points[i].x,
+                spline.control_points[i].y,
+            ));
+            i += 1;
+        }
+        i = 0;
+        let mut knots: Vec<f64> = Vec::new();
+        for _a in &spline.knot_values {
+            knots.push(spline.knot_values[i]);
+            i += 1;
+        }
+        let curr_spline =
+            bspline::BSpline::new(spline.degree_of_curve.try_into().unwrap(), points, knots);
+        let step: f64 =
+            (curr_spline.knot_domain().1 - curr_spline.knot_domain().0) / (spline_step as f64);
+        let mut spline_xml = XMLElement::new("polygon");
+        let mut j: f64 = curr_spline.knot_domain().0;
+        i = 0;
+        while j < curr_spline.knot_domain().1 {
+            spline_xml.add_attribute(format!("x{}", (i + 1)), curr_spline.point(j).x);
+            spline_xml.add_attribute(format!("y{}", (i + 1)), -curr_spline.point(j).y);
+            j += step;
+            i += 1;
+        }
+        spline_xml.add_attribute("closed", "false");
+        spline_xml.add_attribute("antialias", "false");
+        spline_xml.add_attribute(
+            "style",
+            "line-style:normal;line-weight:thin;filling:none;color:black",
+        );
+        spline_xml
     }
-    i = 0;
-    let mut knots: Vec<f64> = Vec::new();
-    for _a in &spline.knot_values {
-        knots.push(spline.knot_values[i]);
-        i += 1;
-    }
-    let curr_spline =
-        bspline::BSpline::new(spline.degree_of_curve.try_into().unwrap(), points, knots);
-    let step: f64 =
-        (curr_spline.knot_domain().1 - curr_spline.knot_domain().0) / (spline_step as f64);
-    let mut spline_xml = XMLElement::new("polygon");
-    let mut j: f64 = curr_spline.knot_domain().0;
-    i = 0;
-    while j < curr_spline.knot_domain().1 {
-        spline_xml.add_attribute(format!("x{}", (i + 1)), curr_spline.point(j).x);
-        spline_xml.add_attribute(format!("y{}", (i + 1)), -curr_spline.point(j).y);
-        j += step;
-        i += 1;
-    }
-    spline_xml.add_attribute("closed", "false");
-    spline_xml.add_attribute("antialias", "false");
-    spline_xml.add_attribute(
-        "style",
-        "line-style:normal;line-weight:thin;filling:none;color:black",
-    );
-    description.add_child(spline_xml);
-    *spline_count += 1;
 }

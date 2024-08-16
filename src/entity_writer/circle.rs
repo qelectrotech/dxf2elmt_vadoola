@@ -1,24 +1,27 @@
 use dxf::entities::Circle;
 use simple_xml_builder::XMLElement;
+use super::ToElemt;
 
-pub fn add(circle: &Circle, description: &mut XMLElement, circle_count: &mut u32) {
-    let mut circle_xml: XMLElement = XMLElement::new("ellipse");
-    circle_xml.add_attribute("x", circle.center.x - circle.radius);
-    circle_xml.add_attribute("y", -circle.center.y - circle.radius);
-    circle_xml.add_attribute("height", circle.radius * 2.0);
-    circle_xml.add_attribute("width", circle.radius * 2.0);
-    circle_xml.add_attribute("antialias", "false");
-    if circle.thickness > 0.5 {
-        circle_xml.add_attribute(
-            "style",
-            "line-style:normal;line-weight:normal;filling:none;color:black",
-        );
-    } else {
-        circle_xml.add_attribute(
-            "style",
-            "line-style:normal;line-weight:thin;filling:none;color:black",
-        );
+impl ToElemt for Circle {
+    fn to_elmt(&self) -> XMLElement {
+        let mut circle_xml: XMLElement = XMLElement::new("ellipse");
+        circle_xml.add_attribute("x", self.center.x - self.radius);
+        circle_xml.add_attribute("y", -self.center.y - self.radius);
+        circle_xml.add_attribute("height", self.radius * 2.0);
+        circle_xml.add_attribute("width", self.radius * 2.0);
+        circle_xml.add_attribute("antialias", "false");
+        if self.thickness > 0.5 {
+            circle_xml.add_attribute(
+                "style",
+                "line-style:normal;line-weight:normal;filling:none;color:black",
+            );
+        } else {
+            circle_xml.add_attribute(
+                "style",
+                "line-style:normal;line-weight:thin;filling:none;color:black",
+            );
+        }
+
+        circle_xml
     }
-    description.add_child(circle_xml);
-    *circle_count += 1;
 }
