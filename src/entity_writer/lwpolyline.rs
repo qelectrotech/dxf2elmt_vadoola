@@ -9,7 +9,11 @@ impl ToElemt for LwPolyline {
             lwpolyline_xml.add_attribute(format!("x{}", (j + 1)), self.vertices[j].x);
             lwpolyline_xml.add_attribute(format!("y{}", (j + 1)), -self.vertices[j].y);
         });
-        lwpolyline_xml.add_attribute("closed", "false");
+        
+        if !self.get_is_closed() {
+            lwpolyline_xml.add_attribute("closed", false);
+        }
+
         lwpolyline_xml.add_attribute("antialias", "false");
         if self.thickness > 0.1 {
             lwpolyline_xml.add_attribute(

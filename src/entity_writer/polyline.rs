@@ -20,7 +20,10 @@ impl ToElemt for Polyline {
                 );
             });
 
-        polyline_xml.add_attribute("closed", "false");
+        if !self.get_is_closed() {
+            polyline_xml.add_attribute("closed", false);
+        }
+        
         polyline_xml.add_attribute("antialias", "false");
 
         if self.thickness > 0.1 {

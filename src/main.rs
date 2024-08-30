@@ -105,46 +105,42 @@ fn main() -> Result<()> {
     let mut description: XMLElement = XMLElement::new("description");
 
     // Loop through all entities, appending to xml file
-    drawing.entities().for_each(|e| match e.specific {
     //drawing.entities().into_iter().par_bridge().for_each(|e| match e.specific {
-        EntityType::Circle(ref circle) => {
-            description.add_child(circle.to_elmt());
-            circle_count += 1;
+    drawing.entities().for_each(|e| {
+        if entity_writer::is_implemented(e) {
+            description.add_child((e, spline_count, dtext).to_elmt());
         }
-        EntityType::Line(ref line) => {
-            description.add_child(line.to_elmt());
-            line_count += 1;
-        }
-        EntityType::Arc(ref arc) => {
-            description.add_child(arc.to_elmt());
-            arc_count += 1;
-        }
-        EntityType::Spline(ref spline) => {
-            description.add_child((spline, spline_step).to_elmt());
-            spline_count += 1;
-        }
-        EntityType::Text(ref text) => {
-            description.add_child((text, e, dtext).to_elmt());
-            text_count += 1;
-        }
-        EntityType::Ellipse(ref ellipse) => {
-            description.add_child(ellipse.to_elmt());
-            ellipse_count += 1;
-        }
-        EntityType::Polyline(ref polyline) => {
-            description.add_child(polyline.to_elmt());
-            polyline_count += 1;
-        }
-        EntityType::LwPolyline(ref lwpolyline) => {
-            description.add_child(lwpolyline.to_elmt());
-            lwpolyline_count += 1;
-        }
-        EntityType::Solid(ref solid) => {
-            description.add_child(solid.to_elmt());
-            solid_count += 1;
-        }
-        _ => {
-            other_count += 1;
+        match e.specific {
+            EntityType::Circle(ref circle) => {
+                circle_count += 1;
+            }
+            EntityType::Line(ref line) => {
+                line_count += 1;
+            }
+            EntityType::Arc(ref arc) => {
+                arc_count += 1;
+            }
+            EntityType::Spline(ref spline) => {
+                spline_count += 1;
+            }
+            EntityType::Text(ref text) => {
+                text_count += 1;
+            }
+            EntityType::Ellipse(ref ellipse) => {
+                ellipse_count += 1;
+            }
+            EntityType::Polyline(ref polyline) => {
+                polyline_count += 1;
+            }
+            EntityType::LwPolyline(ref lwpolyline) => {
+                lwpolyline_count += 1;
+            }
+            EntityType::Solid(ref solid) => {
+                solid_count += 1;
+            }
+            _ => {
+                other_count += 1;
+            }
         }
     });
 
