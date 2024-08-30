@@ -61,7 +61,7 @@ struct Args {
     spline_step: u32,
 
     /// Toggles information output... defaults to on
-    #[clap(short, long, value_parser, default_value_t = false)]
+    #[clap(short, long, value_parser, default_value_t = true)]
     info: bool,
 }
 
@@ -75,18 +75,13 @@ fn main() -> Result<()> {
 
     // Collect arguments
     let args: Args = Args::parse_from(wild::args());
-    let file_name = &args.file_name;
-    let verbose_output: bool = args.verbose;
-    let dtext: bool = args.dtext;
-    let spline_step: u32 = args.spline_step;
-    let info: bool = !args.info;
 
     // Load dxf file
-    let friendly_file_name = file_name.to_string_lossy();
-    let drawing: Drawing = Drawing::load_file(file_name).context(format!(
+    let friendly_file_name = args.file_name.to_string_lossy();
+    let drawing: Drawing = Drawing::load_file(&args.file_name).context(format!(
         "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
-    if !verbose_output && info {
+    if !args.verbose && args.info {
         println!("{friendly_file_name} loaded...");
     }
 
@@ -108,7 +103,7 @@ fn main() -> Result<()> {
     //drawing.entities().into_iter().par_bridge().for_each(|e| match e.specific {
     drawing.entities().for_each(|e| {
         if entity_writer::is_implemented(e) {
-            description.add_child((e, spline_count, dtext).to_elmt());
+            description.add_child((e, args.spline_step, args.dtext).to_elmt());
         }
         match e.specific {
             EntityType::Circle(ref _circle) => {
@@ -151,12 +146,12 @@ fn main() -> Result<()> {
     elmt_writer::set_information(&mut definition);
 
     // Create output file for .elmt
-    let mut out_file = file_writer::create_file(verbose_output, info, file_name);
+    let mut out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
 
     // Write to output file
     elmt_writer::end_elmt(definition, description, &mut out_file);
 
-    if info {
+    if args.info {
         println!("Conversion complete!\n");
 
         // Print stats
@@ -175,8 +170,8 @@ fn main() -> Result<()> {
 
         println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
     }
-    
-    if verbose_output{
+
+    if args.verbose{
         file_writer::verbose_print(out_file);
     }
 
