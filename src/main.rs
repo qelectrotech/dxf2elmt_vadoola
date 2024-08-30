@@ -111,31 +111,31 @@ fn main() -> Result<()> {
             description.add_child((e, spline_count, dtext).to_elmt());
         }
         match e.specific {
-            EntityType::Circle(ref circle) => {
+            EntityType::Circle(ref _circle) => {
                 circle_count += 1;
             }
-            EntityType::Line(ref line) => {
+            EntityType::Line(ref _line) => {
                 line_count += 1;
             }
-            EntityType::Arc(ref arc) => {
+            EntityType::Arc(ref _arc) => {
                 arc_count += 1;
             }
-            EntityType::Spline(ref spline) => {
+            EntityType::Spline(ref _spline) => {
                 spline_count += 1;
             }
-            EntityType::Text(ref text) => {
+            EntityType::Text(ref _text) => {
                 text_count += 1;
             }
-            EntityType::Ellipse(ref ellipse) => {
+            EntityType::Ellipse(ref _ellipse) => {
                 ellipse_count += 1;
             }
-            EntityType::Polyline(ref polyline) => {
+            EntityType::Polyline(ref _polyline) => {
                 polyline_count += 1;
             }
-            EntityType::LwPolyline(ref lwpolyline) => {
+            EntityType::LwPolyline(ref _lwpolyline) => {
                 lwpolyline_count += 1;
             }
-            EntityType::Solid(ref solid) => {
+            EntityType::Solid(ref _solid) => {
                 solid_count += 1;
             }
             _ => {
@@ -174,7 +174,9 @@ fn main() -> Result<()> {
         println!("Currently Unsupported: {other_count}");
 
         println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
-    } else if verbose_output{
+    }
+    
+    if verbose_output{
         file_writer::verbose_print(out_file);
     }
 
