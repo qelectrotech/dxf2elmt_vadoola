@@ -1,6 +1,6 @@
 use dxf::entities::Polyline;
 use simple_xml_builder::XMLElement;
-use super::ToElemt;
+use super::{two_dec, ToElemt};
 
 impl ToElemt for Polyline {
     fn to_elmt(&self) -> XMLElement {
@@ -12,11 +12,11 @@ impl ToElemt for Polyline {
             .for_each(|(j, _i)| {
                 polyline_xml.add_attribute(
                     format!("x{}", (j + 1)),
-                    self.__vertices_and_handles[j].0.location.x,
+                    two_dec(self.__vertices_and_handles[j].0.location.x),
                 );
                 polyline_xml.add_attribute(
                     format!("y{}", (j + 1)),
-                    -self.__vertices_and_handles[j].0.location.y,
+                    two_dec(-self.__vertices_and_handles[j].0.location.y),
                 );
             });
 

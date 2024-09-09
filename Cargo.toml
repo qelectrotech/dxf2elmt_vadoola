@@ -3,9 +3,9 @@ name = "dxf2elmt"
 version = "0.3.4"
 edition = "2021"
 description = "A CLI program to convert .dxf files into .elmt files"
-authors = ["Antonio Aguilar <github: antonioaja>"]
+authors = ["Vadoola <github: vadoola>", "Antonio Aguilar <github: antonioaja>"]
 readme = "README.md"
-repository = "https://github.com/antonioaja/dxf2elmt"
+repository = "https://github.com/Vadoola/dxf2elmt"
 license = "MIT"
 
 [profile.release]
@@ -25,3 +25,4 @@ clap = { version = "4.5.15", features = ["derive"] }
 anyhow = "1.0.86"
 wild = "2.2"
 rayon = "1.10.0"
+hex_color = "3.0.0"

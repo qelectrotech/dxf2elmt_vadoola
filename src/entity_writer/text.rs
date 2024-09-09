@@ -2,6 +2,7 @@ use dxf::entities::Text;
 use dxf::entities::Entity;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
+use super::two_dec;
 use super::ToElemt;
 
 impl ToElemt for (&Text, &Entity, bool) {
@@ -13,11 +14,11 @@ impl ToElemt for (&Text, &Entity, bool) {
         if dynamic_text{
             text_xml = XMLElement::new("dynamic_text");
 
-            text_xml.add_attribute("x", text.location.x);
-            text_xml.add_attribute("y", -text.location.y);
-            text_xml.add_attribute("z", text.location.z);
+            text_xml.add_attribute("x", two_dec(text.location.x));
+            text_xml.add_attribute("y", two_dec(-text.location.y));
+            text_xml.add_attribute("z", two_dec(text.location.z));
             if text.rotation.abs().round() as i64 % 360 != 0 {
-                text_xml.add_attribute("rotation", text.rotation - 180.0);
+                text_xml.add_attribute("rotation", two_dec(text.rotation - 180.0));
             } else {
                 text_xml.add_attribute("rotation", 0);
             }
@@ -71,10 +72,10 @@ impl ToElemt for (&Text, &Entity, bool) {
         if !dynamic_text{
             text_xml = XMLElement::new("text");
         
-            text_xml.add_attribute("x", text.location.x);
-            text_xml.add_attribute("y", -text.location.y);
+            text_xml.add_attribute("x", two_dec(text.location.x));
+            text_xml.add_attribute("y", two_dec(-text.location.y));
             if text.rotation.abs().round() as i64 % 360 != 0 {
-                text_xml.add_attribute("rotation", text.rotation - 180.0);
+                text_xml.add_attribute("rotation", two_dec(text.rotation - 180.0));
             } else {
                 text_xml.add_attribute("rotation", 0);
             }

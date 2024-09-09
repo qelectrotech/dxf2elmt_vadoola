@@ -39,3 +39,8 @@ pub fn is_implemented(entity: &Entity) -> bool {
     use EntityType::{Circle, Line, Arc, Spline, Text, Ellipse, Polyline, LwPolyline, Solid};
     matches!(entity.specific, Circle(_) | Line(_) | Arc(_) | Spline(_) | Text(_) | Ellipse(_) | Polyline(_) | LwPolyline(_) | Solid(_))
 }
+
+#[inline]
+pub fn two_dec(num: f64) -> f64 {
+    (num * 100.0).round() / 100.0
+}

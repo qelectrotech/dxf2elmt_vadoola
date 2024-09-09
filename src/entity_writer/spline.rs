@@ -3,7 +3,7 @@ extern crate bspline;
 use dxf::entities::Spline;
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
-use super::ToElemt;
+use super::{two_dec, ToElemt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Point {
@@ -60,8 +60,8 @@ impl ToElemt for (&Spline, u32) {
         let mut j: f64 = curr_spline.knot_domain().0;
         i = 0;
         while j < curr_spline.knot_domain().1 {
-            spline_xml.add_attribute(format!("x{}", (i + 1)), curr_spline.point(j).x);
-            spline_xml.add_attribute(format!("y{}", (i + 1)), -curr_spline.point(j).y);
+            spline_xml.add_attribute(format!("x{}", (i + 1)), two_dec(curr_spline.point(j).x));
+            spline_xml.add_attribute(format!("y{}", (i + 1)), two_dec(-curr_spline.point(j).y));
             j += step;
             i += 1;
         }
