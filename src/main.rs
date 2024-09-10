@@ -21,11 +21,11 @@
 //      is only ever incremented by 1...why is it inside these functions in the first place.....just return a Result<XMLElement, Err> if it
 //      returns an element increment the count...
 
-#![warn(
+/*#![warn(
     clippy::all,
     clippy::pedantic,
     //clippy::cargo,
-)]
+)]*/
 
 extern crate dxf;
 extern crate simple_xml_builder;
@@ -39,6 +39,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 //use rayon::prelude::*;
 use entity_writer::ToElemt;
+//mod qelmt;
 
 #[derive(Parser, Debug)]
 #[command(name = "dxf2elmt")]
@@ -60,8 +61,8 @@ struct Args {
     #[clap(short, long, value_parser, default_value_t = 100)]
     spline_step: u32,
 
-    /// Toggles information output... defaults to on
-    #[clap(short, long, value_parser, default_value_t = true)]
+    /// Toggles information output... defaults to off
+    #[clap(short, long, value_parser, default_value_t = false)]
     info: bool,
 }
 
@@ -100,7 +101,6 @@ fn main() -> Result<()> {
     let mut description: XMLElement = XMLElement::new("description");
 
     // Loop through all entities, appending to xml file
-    //drawing.entities().into_iter().par_bridge().for_each(|e| match e.specific {
     drawing.entities().for_each(|e| {
         if entity_writer::is_implemented(e) {
             description.add_child((e, args.spline_step, args.dtext).to_elmt());
