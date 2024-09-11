@@ -39,7 +39,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 //use rayon::prelude::*;
 use entity_writer::ToElemt;
-//mod qelmt;
+mod qelmt;
 
 #[derive(Parser, Debug)]
 #[command(name = "dxf2elmt")]
