@@ -1,6 +1,6 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::Circle;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for Circle {
     fn to_elmt(&self) -> XMLElement {

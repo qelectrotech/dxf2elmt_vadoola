@@ -1,9 +1,9 @@
 extern crate bspline;
 
+use super::{two_dec, ToElemt};
 use dxf::entities::Spline;
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
-use super::{two_dec, ToElemt};
 
 #[derive(Copy, Clone, Debug)]
 pub struct Point {

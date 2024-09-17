@@ -1,6 +1,6 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::Line;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for Line {
     fn to_elmt(&self) -> XMLElement {
@@ -9,7 +9,7 @@ impl ToElemt for Line {
         line_xml.add_attribute("y1", two_dec(-self.p1.y));
         line_xml.add_attribute("length1", 1.5);
         line_xml.add_attribute("end1", "none");
-        line_xml.add_attribute("x2", two_dec( self.p2.x));
+        line_xml.add_attribute("x2", two_dec(self.p2.x));
         line_xml.add_attribute("y2", two_dec(-self.p2.y));
         line_xml.add_attribute("length2", 1.5);
         line_xml.add_attribute("end2", "none");

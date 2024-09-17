@@ -1,4 +1,4 @@
-use dxf::entities::Circle;
+use dxf::entities::{self, Circle};
 
 pub struct Ellipse {
     height: f64,
@@ -24,7 +24,24 @@ impl From<&Circle> for Ellipse {
                 "line-style:normal;line-weight:normal;filling:none;color:black"
             } else {
                 "line-style:normal;line-weight:thin;filling:none;color:black"
-            }.into(),
+            }
+            .into(),
+        }
+    }
+}
+
+impl From<&entities::Ellipse> for Ellipse {
+    fn from(ellipse: &entities::Ellipse) -> Self {
+        Ellipse {
+            x: ellipse.center.x - ellipse.major_axis.x,
+            y: -ellipse.center.y - ellipse.major_axis.x * ellipse.minor_axis_ratio,
+            height: ellipse.major_axis.x * 2.0,
+            width: ellipse.major_axis.x * 2.0 * ellipse.minor_axis_ratio,
+
+            //in the original code antialias is always set to false...I'm guessing for performance
+            //reasons...I'm trying to think if there is a time we might want to turn it on?
+            antialias: false,
+            style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
         }
     }
 }

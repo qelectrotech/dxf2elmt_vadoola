@@ -18,32 +18,32 @@ impl From<&entities::Arc> for Arc {
         } else {
             arc.end_angle - arc.start_angle
         };
-        
+
         Arc {
             x: arc.center.x - arc.radius,
             y: -arc.center.y - arc.radius,
             height: arc.radius * 2.0,
             width: arc.radius * 2.0,
             start: if arc.start_angle < 0.0 {
-                    -arc.start_angle
-                } else {
-                    arc.start_angle
-                },
+                -arc.start_angle
+            } else {
+                arc.start_angle
+            },
             angle: if temp_angle < 0.0 {
-                    -temp_angle
-                } else {
-                    temp_angle
-                },
-
+                -temp_angle
+            } else {
+                temp_angle
+            },
 
             //in the original code antialias is always set to false...I'm guessing for performance
             //reasons...I'm trying to think if there is a time we might want to turn it on?
             antialias: false,
             style: if arc.thickness > 0.1 {
-                    "line-style:normal;line-weight:normal;filling:none;color:black"
-                } else {
-                    "line-style:normal;line-weight:thin;filling:none;color:black"
-                }.into(),
+                "line-style:normal;line-weight:normal;filling:none;color:black"
+            } else {
+                "line-style:normal;line-weight:thin;filling:none;color:black"
+            }
+            .into(),
         }
     }
 }

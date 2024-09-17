@@ -1,12 +1,11 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::Polyline;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for Polyline {
     fn to_elmt(&self) -> XMLElement {
         let mut polyline_xml: XMLElement = XMLElement::new("polygon");
-        self
-            .__vertices_and_handles
+        self.__vertices_and_handles
             .iter()
             .enumerate()
             .for_each(|(j, _i)| {
@@ -23,7 +22,7 @@ impl ToElemt for Polyline {
         if !self.get_is_closed() {
             polyline_xml.add_attribute("closed", false);
         }
-        
+
         polyline_xml.add_attribute("antialias", "false");
 
         if self.thickness > 0.1 {

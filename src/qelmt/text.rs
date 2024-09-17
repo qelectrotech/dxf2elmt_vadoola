@@ -17,7 +17,9 @@ impl From<(&entities::Text, HexColor)> for Text {
             y: -txt.location.y,
             rotation: if txt.rotation.abs().round() as i64 % 360 != 0 {
                 txt.rotation - 180.0
-            } else { 0.0 },
+            } else {
+                0.0
+            },
             color,
             font: if &txt.text_style_name == "STANDARD" {
                 "Arial Narrow".into()

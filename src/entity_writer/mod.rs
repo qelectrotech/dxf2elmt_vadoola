@@ -1,16 +1,15 @@
-use simple_xml_builder::XMLElement;
 use dxf::entities::{Entity, EntityType};
+use simple_xml_builder::XMLElement;
 
-pub mod solid;
+pub mod arc;
+pub mod circle;
+pub mod ellipse;
+pub mod line;
 pub mod lwpolyline;
 pub mod polyline;
-pub mod ellipse;
-pub mod text;
+pub mod solid;
 pub mod spline;
-pub mod arc;
-pub mod line;
-pub mod circle;
-
+pub mod text;
 
 pub trait ToElemt {
     fn to_elmt(&self) -> XMLElement;
@@ -36,8 +35,19 @@ impl ToElemt for (&Entity, u32, bool) {
 }
 
 pub fn is_implemented(entity: &Entity) -> bool {
-    use EntityType::{Circle, Line, Arc, Spline, Text, Ellipse, Polyline, LwPolyline, Solid};
-    matches!(entity.specific, Circle(_) | Line(_) | Arc(_) | Spline(_) | Text(_) | Ellipse(_) | Polyline(_) | LwPolyline(_) | Solid(_))
+    use EntityType::{Arc, Circle, Ellipse, Line, LwPolyline, Polyline, Solid, Spline, Text};
+    matches!(
+        entity.specific,
+        Circle(_)
+            | Line(_)
+            | Arc(_)
+            | Spline(_)
+            | Text(_)
+            | Ellipse(_)
+            | Polyline(_)
+            | LwPolyline(_)
+            | Solid(_)
+    )
 }
 
 #[inline]

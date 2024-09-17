@@ -171,7 +171,7 @@ fn main() -> Result<()> {
         println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
     }
 
-    if args.verbose{
+    if args.verbose {
         file_writer::verbose_print(out_file);
     }
 

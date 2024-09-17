@@ -1,6 +1,6 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::Solid;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for Solid {
     fn to_elmt(&self) -> XMLElement {

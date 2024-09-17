@@ -1,6 +1,6 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::Arc;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for Arc {
     fn to_elmt(&self) -> XMLElement {

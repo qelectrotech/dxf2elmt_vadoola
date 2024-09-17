@@ -1,6 +1,6 @@
+use super::{two_dec, ToElemt};
 use dxf::entities::LwPolyline;
 use simple_xml_builder::XMLElement;
-use super::{two_dec, ToElemt};
 
 impl ToElemt for LwPolyline {
     fn to_elmt(&self) -> XMLElement {
@@ -9,7 +9,7 @@ impl ToElemt for LwPolyline {
             lwpolyline_xml.add_attribute(format!("x{}", (j + 1)), two_dec(self.vertices[j].x));
             lwpolyline_xml.add_attribute(format!("y{}", (j + 1)), two_dec(-self.vertices[j].y));
         });
-        
+
         if !self.get_is_closed() {
             lwpolyline_xml.add_attribute("closed", false);
         }

@@ -2,10 +2,10 @@
 use uuid::Uuid;
 //use std::str::FromStr;
 //use strum::EnumString;
-use hex_color::HexColor;
-use std::convert::TryFrom;
 use dxf::entities::{Entity, EntityType};
 use dxf::Drawing;
+use hex_color::HexColor;
+use std::convert::TryFrom;
 
 pub mod arc;
 pub use arc::Arc;
@@ -15,6 +15,9 @@ pub use line::Line;
 
 pub mod text;
 pub use text::Text;
+
+pub mod dynamictext;
+pub use dynamictext::DynamicText;
 
 pub mod polygon;
 pub use polygon::Polygon;
@@ -37,7 +40,6 @@ pub struct Definition {
     description: Description,
 }
 
-
 enum Objects {
     Arc(Arc),
     Ellipse(Ellipse),
@@ -49,19 +51,44 @@ enum Objects {
 }
 
 impl TryFrom<Entity> for Objects {
-    type Error = &'static str;//add better error later
+    type Error = &'static str; //add better error later
 
     fn try_from(ent: Entity) -> Result<Self, Self::Error> {
         match ent.specific {
             EntityType::Circle(ref circle) => Ok(Objects::Ellipse(circle.into())),
             EntityType::Line(ref line) => Ok(Objects::Line(line.into())),
             EntityType::Arc(ref arc) => Ok(Objects::Arc(arc.into())),
-            EntityType::Spline(ref spline) => todo!(),
-            EntityType::Text(ref text) => Ok(Objects::Text((text, HexColor::from_u32(ent.common.color_24_bit as u32)).into())),
-            EntityType::Ellipse(ref ellipse) => todo!(),
+            EntityType::Spline(ref spline) => Ok(Objects::Polygon(
+                (
+                    spline,
+                    100, /*need to passin spline value from cli, just hard codding value for now */
+                )
+                    .into(),
+            )),
+            EntityType::Text(ref text) => {
+                Ok(
+                    //right now the dxf2elmt defaults to making all text Static Text...
+                    //it was requested by the QET devs to add in support for Dynamic text
+                    //which was added, but it defaults to OFF, and QET doesn't pass the parameter
+                    //to enable it...I'm wondering if it makes more sense to default to use dynamic text
+                    //for now I'll set it to use dynamic text, and once I get the CLI flag passing through
+                    //I might change the default parameter to use Dynamic Text
+                    if false {
+                        //how best to pass in the flag for dynamic text or not....should the flag also default to true?
+                        Objects::Text(
+                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into(),
+                        )
+                    } else {
+                        Objects::DynamicText(
+                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into(),
+                        )
+                    },
+                )
+            }
+            EntityType::Ellipse(ref ellipse) => Ok(Objects::Ellipse(ellipse.into())),
             EntityType::Polyline(ref polyline) => Ok(Objects::Polygon(polyline.into())),
-            EntityType::LwPolyline(ref lwpolyline) => todo!(),
-            EntityType::Solid(ref solid) => todo!(),
+            EntityType::LwPolyline(ref lwpolyline) => Ok(Objects::Polygon(lwpolyline.into())),
+            EntityType::Solid(ref solid) => Ok(Objects::Polygon(solid.into())),
             _ => todo!("Need to implement the rest of the entity types"),
         }
     }
@@ -75,23 +102,6 @@ pub struct Description {
     objects: Vec<Objects>,
 }
 
-pub struct DynamicText {
-    text: String,
-    info_name: Option<String>,
-    x: f64,
-    y: f64,
-    z: i32,
-    rotation: f64,
-    uuid: Uuid,
-    h_alignment: HAlignment,
-    font: String,
-    text_from: String,
-    v_alignment: VAlignment,
-    frame: bool,
-    text_width: i32,
-    keep_visual_rotation: bool,
-}
-
 //probably don't need to worry about this as they won't exist in the dxf...
 pub struct Terminal {
     x: f64,
@@ -99,7 +109,6 @@ pub struct Terminal {
     uuid: Uuid,
     name: String,
     orientation: TermOrient,
-    
     //type?
     //  Generic
     //  Indoor Terminal Block
@@ -111,7 +120,7 @@ pub struct Names {
 }
 
 pub struct Name {
-    lang: String,//should this be an enum of language shorts at some point, maybe not worth it
+    lang: String, //should this be an enum of language shorts at some point, maybe not worth it
     value: String,
 }
 
@@ -119,19 +128,18 @@ pub struct ElmtUuid {
     uuid: String,
 }
 
-
 enum ItemType {
-    Element                           =    1,
-    ElementsCategory                  =    2,
-    ElementsCollection                =    4,
-    ElementsContainer                 =    6,
-    ElementsCollectionItem            =    7,
-    TitleBlockTemplate                =    8,
-    TitleBlockTemplatesCollection     =   16,
-    TitleBlockTemplatesCollectionItem =   24,
-    Diagram                           =   32,
-    Project                           =   64,
-    All                               =  127
+    Element = 1,
+    ElementsCategory = 2,
+    ElementsCollection = 4,
+    ElementsContainer = 6,
+    ElementsCollectionItem = 7,
+    TitleBlockTemplate = 8,
+    TitleBlockTemplatesCollection = 16,
+    TitleBlockTemplatesCollectionItem = 24,
+    Diagram = 32,
+    Project = 64,
+    All = 127,
 }
 
 enum HAlignment {
@@ -160,7 +168,6 @@ enum TermOrient {
     South,
     West,
 }
-
 
 enum LinkType {
     Simple,
