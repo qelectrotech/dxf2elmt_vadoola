@@ -1,5 +1,9 @@
 use dxf::entities::{self, Circle};
+use simple_xml_builder::XMLElement;
 
+use crate::entity_writer::two_dec;
+
+#[derive(Debug)]
 pub struct Ellipse {
     height: f64,
     width: f64,
@@ -43,5 +47,18 @@ impl From<&entities::Ellipse> for Ellipse {
             antialias: false,
             style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
         }
+    }
+}
+
+impl From<&Ellipse> for XMLElement {
+    fn from(ell: &Ellipse) -> Self {
+        let mut ell_xml: XMLElement = XMLElement::new("ellipse");
+        ell_xml.add_attribute("x", two_dec(ell.x));
+        ell_xml.add_attribute("y", two_dec(ell.y));
+        ell_xml.add_attribute("width", two_dec(ell.width));
+        ell_xml.add_attribute("height", two_dec(ell.height));
+        ell_xml.add_attribute("antialias", ell.antialias);
+        ell_xml.add_attribute("style", &ell.style);
+        ell_xml
     }
 }

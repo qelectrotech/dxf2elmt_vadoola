@@ -1,6 +1,10 @@
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
+use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
 
+use crate::entity_writer::two_dec;
+
+#[derive(Debug)]
 struct Coordinate {
     x: f64,
     y: f64,
@@ -35,6 +39,7 @@ impl Add for Point {
     }
 }
 
+#[derive(Debug)]
 pub struct Polygon {
     style: String,
     antialias: bool,
@@ -50,7 +55,7 @@ impl From<&Polyline> for Polygon {
                 .iter()
                 .map(|(vertex, _handle)| Coordinate {
                     x: vertex.location.x,
-                    y: vertex.location.y,
+                    y: -vertex.location.y,
                 })
                 .collect(),
             closed: poly.get_is_closed(),
@@ -75,7 +80,7 @@ impl From<&LwPolyline> for Polygon {
                 .iter()
                 .map(|vertex| Coordinate {
                     x: vertex.x,
-                    y: vertex.y,
+                    y: -vertex.y,
                 })
                 .collect(),
             closed: poly.get_is_closed(),
@@ -178,5 +183,20 @@ impl From<&Solid> for Polygon {
             }
             .into(),
         }
+    }
+}
+
+impl From<&Polygon> for XMLElement {
+    fn from(poly: &Polygon) -> Self {
+        let mut poly_xml: XMLElement = XMLElement::new("polygon");
+
+        for (count, coord) in poly.coordinates.iter().enumerate() {
+            poly_xml.add_attribute(format!("x{}", (count + 1)), two_dec(coord.x));
+            poly_xml.add_attribute(format!("y{}", (count + 1)), two_dec(coord.y));
+        }
+        poly_xml.add_attribute("closed", poly.closed);
+        poly_xml.add_attribute("antialias", poly.antialias);
+        poly_xml.add_attribute("style", &poly.style);
+        poly_xml
     }
 }

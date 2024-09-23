@@ -1,3 +1,4 @@
+use simple_xml_builder::XMLElement;
 //use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 //use std::str::FromStr;
@@ -6,6 +7,7 @@ use dxf::entities::{Entity, EntityType};
 use dxf::Drawing;
 use hex_color::HexColor;
 use std::convert::TryFrom;
+use std::fmt::Display;
 
 pub mod arc;
 pub use arc::Arc;
@@ -25,6 +27,7 @@ pub use polygon::Polygon;
 pub mod ellipse;
 pub use ellipse::Ellipse;
 
+#[derive(Debug)]
 pub struct Definition {
     r#type: ItemType,
     width: i32,
@@ -40,6 +43,62 @@ pub struct Definition {
     description: Description,
 }
 
+impl Definition {
+    pub fn new(name: impl Into<String>, spline_step: u32, drw: &Drawing) -> Self {
+        Definition {
+            r#type: ItemType::Element,
+
+            //The original code had the height, and width hard coded to 10
+            //and the hotspots hard coded to 5. I'm not sure why this is?
+            //Maybe actually calculating the size wasn't worth it? I'm not sure
+            //if that info is part of the dxf. And maybe when you open he elemnt
+            //in the elemtent editor it corrects it anyway. Just look into it, and
+            //se if this is something that needs to get adjusted.
+            width: 10,
+            height: 10,
+            hotspot_x: 5,
+            hotspot_y: 5,
+            version: "0.8.0".into(),
+            link_type: LinkType::Simple,
+            uuid: Uuid::new_v4().into(),
+            names: Names {
+                names: vec![Name {
+                    lang: "en".into(),
+                    value: name.into(), //need to truncate the extension
+                }],
+            },
+            element_infos: None,
+            informations: Some("Created using dxf2elmt!".into()),
+            description: drw.into(),
+        }
+    }
+}
+
+impl From<&Definition> for XMLElement {
+    fn from(def: &Definition) -> Self {
+        let mut def_xml = XMLElement::new("definition");
+        def_xml.add_attribute("height", def.height);
+        def_xml.add_attribute("width", def.width);
+        def_xml.add_attribute("hotspot_x", def.hotspot_x);
+        def_xml.add_attribute("hotspot_y", def.hotspot_y);
+        def_xml.add_attribute("version", &def.version);
+        def_xml.add_attribute("link_type", &def.link_type);
+        def_xml.add_attribute("type", &def.r#type);
+        def_xml.add_attribute("uuid", &def.uuid);
+
+        def_xml.add_child((&def.names).into());
+
+        let mut info_elmt = XMLElement::new("informations");
+        info_elmt.add_text("Created using dxf2elmt!");
+        def_xml.add_child(info_elmt);
+
+        def_xml.add_child((&def.description).into());
+
+        def_xml
+    }
+}
+
+#[derive(Debug)]
 enum Objects {
     Arc(Arc),
     Ellipse(Ellipse),
@@ -47,13 +106,13 @@ enum Objects {
     DynamicText(DynamicText),
     Text(Text),
     Line(Line),
-    Terminal(Terminal),
+    //Terminal(Terminal),
 }
 
-impl TryFrom<Entity> for Objects {
+impl TryFrom<&Entity> for Objects {
     type Error = &'static str; //add better error later
 
-    fn try_from(ent: Entity) -> Result<Self, Self::Error> {
+    fn try_from(ent: &Entity) -> Result<Self, Self::Error> {
         match ent.specific {
             EntityType::Circle(ref circle) => Ok(Objects::Ellipse(circle.into())),
             EntityType::Line(ref line) => Ok(Objects::Line(line.into())),
@@ -89,7 +148,20 @@ impl TryFrom<Entity> for Objects {
             EntityType::Polyline(ref polyline) => Ok(Objects::Polygon(polyline.into())),
             EntityType::LwPolyline(ref lwpolyline) => Ok(Objects::Polygon(lwpolyline.into())),
             EntityType::Solid(ref solid) => Ok(Objects::Polygon(solid.into())),
-            _ => todo!("Need to implement the rest of the entity types"),
+            _ => Err("Need to implement the rest of the entity types"),
+        }
+    }
+}
+
+impl From<&Objects> for XMLElement {
+    fn from(obj: &Objects) -> Self {
+        match obj {
+            Objects::Arc(arc) => arc.into(),
+            Objects::Ellipse(ell) => ell.into(),
+            Objects::Polygon(poly) => poly.into(),
+            Objects::DynamicText(dtext) => dtext.into(),
+            Objects::Text(txt) => txt.into(),
+            Objects::Line(line) => line.into(),
         }
     }
 }
@@ -98,8 +170,37 @@ impl TryFrom<Entity> for Objects {
 //or a vec of enums of. With the enum being one of each type....I guess that might keep the ordering better?
 //since they could be interleaved.
 //it could have polygon, text, line, polygon. Right now they would get jumbled with all the seperate Vecs...
+#[derive(Debug)]
 pub struct Description {
     objects: Vec<Objects>,
+}
+
+impl From<&Description> for XMLElement {
+    fn from(desc: &Description) -> Self {
+        let mut desc_xml = XMLElement::new("description");
+        for obj in &desc.objects {
+            desc_xml.add_child(obj.into());
+        }
+        desc_xml
+    }
+}
+
+/*impl TryFrom<Drawing> for Description {
+    type Error = &'static str; //add better error later
+
+    fn try_from(drw: Drawing) -> Result<Self, Self::Error> {
+        drw.entities().filter_map(|ent| Objects::try_from(ent).ok()).collect();
+    }
+}*/
+impl From<&Drawing> for Description {
+    fn from(drw: &Drawing) -> Self {
+        Self {
+            objects: drw
+                .entities()
+                .filter_map(|ent| Objects::try_from(ent).ok())
+                .collect(),
+        }
+    }
 }
 
 //probably don't need to worry about this as they won't exist in the dxf...
@@ -115,19 +216,48 @@ pub struct Terminal {
     //  External Terminal Block
 }
 
+#[derive(Debug)]
 pub struct Names {
     names: Vec<Name>,
 }
 
+impl From<&Names> for XMLElement {
+    fn from(nme: &Names) -> Self {
+        let mut names_elmt = XMLElement::new("names");
+        for name in &nme.names {
+            let mut name_elmt = XMLElement::new("name");
+            name_elmt.add_attribute("lang", &name.value);
+            names_elmt.add_child(name_elmt);
+        }
+        names_elmt
+    }
+}
+
+#[derive(Debug)]
 pub struct Name {
     lang: String, //should this be an enum of language shorts at some point, maybe not worth it
     value: String,
 }
 
+#[derive(Debug)]
 pub struct ElmtUuid {
-    uuid: String,
+    //uuid: String,
+    uuid: Uuid,
 }
 
+impl From<Uuid> for ElmtUuid {
+    fn from(uuid: Uuid) -> Self {
+        ElmtUuid { uuid }
+    }
+}
+
+impl Display for ElmtUuid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{{}}}", self.uuid)
+    }
+}
+
+#[derive(Debug)]
 enum ItemType {
     Element = 1,
     ElementsCategory = 2,
@@ -142,24 +272,92 @@ enum ItemType {
     All = 127,
 }
 
+impl Display for ItemType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Element => "element",
+                Self::ElementsCategory | Self::ElementsContainer | Self::ElementsCollectionItem =>
+                    "elements category",
+                Self::ElementsCollection => "element",
+                Self::TitleBlockTemplate | Self::TitleBlockTemplatesCollectionItem =>
+                    "title block template",
+                Self::TitleBlockTemplatesCollection => "title block templates collection",
+                Self::Diagram => "diagram",
+                Self::Project => "project",
+                Self::All => "All",
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
 enum HAlignment {
     Left,
     Center,
     Right,
 }
 
+impl Display for HAlignment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Left => "AlignLeft",
+                Self::Center => "AlignHCenter",
+                Self::Right => "AlignRight",
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
 enum VAlignment {
     Top,
     Center,
     Bottom,
 }
 
+impl Display for VAlignment {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Top => "AlignTop",
+                Self::Center => "AlignVCenter",
+                Self::Bottom => "AlignBottom",
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
 enum LineEnd {
     None,
     SimpleArrow,
     TriangleArrow,
     Circle,
     Diamond,
+}
+
+impl Display for LineEnd {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::None => "none",
+                Self::SimpleArrow => "simple",
+                Self::TriangleArrow => "triangle",
+                Self::Circle => "circle",
+                Self::Diamond => "diamond",
+            }
+        )
+    }
 }
 
 enum TermOrient {
@@ -169,6 +367,7 @@ enum TermOrient {
     West,
 }
 
+#[derive(Debug)]
 enum LinkType {
     Simple,
     Master,
@@ -179,10 +378,30 @@ enum LinkType {
     Thumbnail,
 }
 
+impl Display for LinkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Simple => "simple",
+                Self::Master => "master",
+                Self::Slave => "slave",
+                Self::NextReport => "next_report",
+                Self::PrevReport => "previous_report",
+                Self::TermBlock => "terminal",
+                Self::Thumbnail => "thumbnail",
+            }
+        )
+    }
+}
+
+#[derive(Debug)]
 pub struct ElemInfos {
     elem_info: Vec<ElemInfo>,
 }
 
+#[derive(Debug)]
 pub struct ElemInfo {
     //there seems to be a list in the editor with the following values (per the XML)
     //  * supplier

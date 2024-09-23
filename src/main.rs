@@ -34,7 +34,9 @@ use anyhow::{Context, Ok, Result};
 use clap::Parser;
 use dxf::entities::EntityType;
 use dxf::Drawing;
+use qelmt::Definition;
 use simple_xml_builder::XMLElement;
+use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 //use rayon::prelude::*;
@@ -82,6 +84,8 @@ fn main() -> Result<()> {
     let drawing: Drawing = Drawing::load_file(&args.file_name).context(format!(
         "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
+    let q_elmt = Definition::new(friendly_file_name.to_owned(),  args.spline_step, &drawing);
+    println!{"{q_elmt:#?}"}
     if !args.verbose && args.info {
         println!("{friendly_file_name} loaded...");
     }
@@ -147,6 +151,7 @@ fn main() -> Result<()> {
 
     // Create output file for .elmt
     let mut out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
+    
 
     // Write to output file
     elmt_writer::end_elmt(definition, description, &mut out_file);

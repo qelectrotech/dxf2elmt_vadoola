@@ -1,6 +1,10 @@
+use crate::entity_writer::two_dec;
+
 use super::LineEnd;
 use dxf::entities;
+use simple_xml_builder::XMLElement;
 
+#[derive(Debug)]
 pub struct Line {
     length2: f64,
     end2: LineEnd,
@@ -39,4 +43,19 @@ impl From<&entities::Line> for Line {
     }
 }
 
-//impl From<Line> for XMLElement
+impl From<&Line> for XMLElement {
+    fn from(line: &Line) -> Self {
+        let mut line_xml: XMLElement = XMLElement::new("line");
+        line_xml.add_attribute("x1", two_dec(line.x1));
+        line_xml.add_attribute("y1", two_dec(line.y1));
+        line_xml.add_attribute("length1", two_dec(line.length1));
+        line_xml.add_attribute("end1", &line.end1);
+        line_xml.add_attribute("x2", two_dec(line.x2));
+        line_xml.add_attribute("y2", two_dec(line.y2));
+        line_xml.add_attribute("length2", two_dec(line.length2));
+        line_xml.add_attribute("end2", &line.end2);
+        line_xml.add_attribute("antialias", line.antialias);
+        line_xml.add_attribute("style", &line.style);
+        line_xml
+    }
+}

@@ -1,6 +1,10 @@
 use dxf::entities;
 use hex_color::HexColor;
+use simple_xml_builder::XMLElement;
 
+use crate::entity_writer::two_dec;
+
+#[derive(Debug)]
 pub struct Text {
     rotation: f64,
     value: String,
@@ -28,5 +32,18 @@ impl From<(&entities::Text, HexColor)> for Text {
             },
             value: txt.value.clone(),
         }
+    }
+}
+
+impl From<&Text> for XMLElement {
+    fn from(txt: &Text) -> Self {
+        let mut txt_xml: XMLElement = XMLElement::new("text");
+        txt_xml.add_attribute("x", two_dec(txt.x));
+        txt_xml.add_attribute("y", two_dec(txt.y));
+        txt_xml.add_attribute("rotation", two_dec(txt.rotation));
+        txt_xml.add_attribute("color", txt.color.display_rgb());
+        txt_xml.add_attribute("font", &txt.font);
+        txt_xml.add_attribute("text", &txt.value);
+        txt_xml
     }
 }

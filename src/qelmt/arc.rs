@@ -1,5 +1,9 @@
 use dxf::entities;
+use simple_xml_builder::XMLElement;
 
+use crate::entity_writer::two_dec;
+
+#[derive(Debug)]
 pub struct Arc {
     x: f64,
     y: f64,
@@ -45,5 +49,20 @@ impl From<&entities::Arc> for Arc {
             }
             .into(),
         }
+    }
+}
+
+impl From<&Arc> for XMLElement {
+    fn from(arc: &Arc) -> Self {
+        let mut arc_xml: XMLElement = XMLElement::new("arc");
+        arc_xml.add_attribute("x", two_dec(arc.x));
+        arc_xml.add_attribute("y", two_dec(arc.y));
+        arc_xml.add_attribute("width", two_dec(arc.width));
+        arc_xml.add_attribute("height", two_dec(arc.height));
+        arc_xml.add_attribute("start", arc.start.round());
+        arc_xml.add_attribute("angle", arc.angle.round());
+        arc_xml.add_attribute("antialias", arc.antialias);
+        arc_xml.add_attribute("style", &arc.style);
+        arc_xml
     }
 }
