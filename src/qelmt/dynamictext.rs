@@ -2,8 +2,7 @@ use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
-
-use crate::entity_writer::two_dec;
+use super::two_dec;
 
 use super::{HAlignment, VAlignment};
 

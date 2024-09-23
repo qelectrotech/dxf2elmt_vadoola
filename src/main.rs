@@ -36,11 +36,9 @@ use dxf::entities::EntityType;
 use dxf::Drawing;
 use qelmt::Definition;
 use simple_xml_builder::XMLElement;
-use std::io::Write;
 use std::path::PathBuf;
 use std::time::Instant;
 //use rayon::prelude::*;
-use entity_writer::ToElemt;
 mod qelmt;
 
 #[derive(Parser, Debug)]
@@ -68,8 +66,6 @@ struct Args {
     info: bool,
 }
 
-pub mod elmt_writer;
-pub mod entity_writer;
 pub mod file_writer;
 
 fn main() -> Result<()> {
@@ -85,7 +81,6 @@ fn main() -> Result<()> {
         "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
     let q_elmt = Definition::new(friendly_file_name.to_owned(),  args.spline_step, &drawing);
-    println!{"{q_elmt:#?}"}
     if !args.verbose && args.info {
         println!("{friendly_file_name} loaded...");
     }
@@ -102,13 +97,8 @@ fn main() -> Result<()> {
     let mut solid_count: u32 = 0;
     let mut other_count: u32 = 0;
 
-    let mut description: XMLElement = XMLElement::new("description");
-
-    // Loop through all entities, appending to xml file
+    // Loop through all entities, counting the element types
     drawing.entities().for_each(|e| {
-        if entity_writer::is_implemented(e) {
-            description.add_child((e, args.spline_step, args.dtext).to_elmt());
-        }
         match e.specific {
             EntityType::Circle(ref _circle) => {
                 circle_count += 1;
@@ -143,17 +133,13 @@ fn main() -> Result<()> {
         }
     });
 
-    // Begin creating .elmt file
-    let mut definition = elmt_writer::set_definition();
-    elmt_writer::set_uuid(&mut definition);
-    elmt_writer::set_names(&friendly_file_name, &mut definition);
-    elmt_writer::set_information(&mut definition);
-
     // Create output file for .elmt
-    let mut out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
+    let out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
 
     // Write to output file
-    elmt_writer::end_elmt(definition, description, &mut out_file);
+    XMLElement::from(&q_elmt)
+        .write(&out_file)
+        .context("Failed to write output file.")?;
 
     if args.info {
         println!("Conversion complete!\n");

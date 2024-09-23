@@ -1,7 +1,6 @@
 use dxf::entities::{self, Circle};
 use simple_xml_builder::XMLElement;
-
-use crate::entity_writer::two_dec;
+use super::two_dec;
 
 #[derive(Debug)]
 pub struct Ellipse {

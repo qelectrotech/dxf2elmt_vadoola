@@ -1,8 +1,7 @@
-use crate::entity_writer::two_dec;
-
 use super::LineEnd;
 use dxf::entities;
 use simple_xml_builder::XMLElement;
+use super::two_dec;
 
 #[derive(Debug)]
 pub struct Line {

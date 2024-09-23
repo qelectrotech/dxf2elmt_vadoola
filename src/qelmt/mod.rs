@@ -41,6 +41,8 @@ pub struct Definition {
     element_infos: Option<ElemInfos>,
     informations: Option<String>,
     description: Description,
+
+    //counts
 }
 
 impl Definition {
@@ -426,4 +428,10 @@ pub struct ElemInfo {
     show: i32,
 
     value: String,
+}
+
+
+#[inline]
+pub fn two_dec(num: f64) -> f64 {
+    (num * 100.0).round() / 100.0
 }

@@ -1,8 +1,7 @@
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
-
-use crate::entity_writer::two_dec;
+use super::two_dec;
 
 #[derive(Debug)]
 struct Coordinate {
