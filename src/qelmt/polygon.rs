@@ -194,7 +194,12 @@ impl From<&Polygon> for XMLElement {
             poly_xml.add_attribute(format!("x{}", (count + 1)), two_dec(coord.x));
             poly_xml.add_attribute(format!("y{}", (count + 1)), two_dec(coord.y));
         }
-        poly_xml.add_attribute("closed", poly.closed);
+        
+        //closed defaults to true, don't need to write it out unless it's false
+        if !poly.closed {
+            poly_xml.add_attribute("closed", poly.closed);
+        }
+        
         poly_xml.add_attribute("antialias", poly.antialias);
         poly_xml.add_attribute("style", &poly.style);
         poly_xml

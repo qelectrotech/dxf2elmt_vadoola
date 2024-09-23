@@ -80,7 +80,7 @@ fn main() -> Result<()> {
     let args: Args = Args::parse_from(wild::args());
 
     // Load dxf file
-    let friendly_file_name = args.file_name.to_string_lossy();
+    let friendly_file_name = args.file_name.file_stem().unwrap().to_string_lossy();
     let drawing: Drawing = Drawing::load_file(&args.file_name).context(format!(
         "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
@@ -151,7 +151,6 @@ fn main() -> Result<()> {
 
     // Create output file for .elmt
     let mut out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
-    
 
     // Write to output file
     elmt_writer::end_elmt(definition, description, &mut out_file);

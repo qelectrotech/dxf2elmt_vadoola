@@ -3,7 +3,7 @@ use simple_xml_builder::XMLElement;
 use uuid::Uuid;
 //use std::str::FromStr;
 //use strum::EnumString;
-use dxf::entities::{Entity, EntityType};
+use dxf::entities::{AttributeDefinition, Entity, EntityType};
 use dxf::Drawing;
 use hex_color::HexColor;
 use std::convert::TryFrom;
@@ -84,7 +84,7 @@ impl From<&Definition> for XMLElement {
         def_xml.add_attribute("version", &def.version);
         def_xml.add_attribute("link_type", &def.link_type);
         def_xml.add_attribute("type", &def.r#type);
-        def_xml.add_attribute("uuid", &def.uuid);
+        def_xml.add_child((&def.uuid).into());
 
         def_xml.add_child((&def.names).into());
 
@@ -226,7 +226,8 @@ impl From<&Names> for XMLElement {
         let mut names_elmt = XMLElement::new("names");
         for name in &nme.names {
             let mut name_elmt = XMLElement::new("name");
-            name_elmt.add_attribute("lang", &name.value);
+            name_elmt.add_attribute("lang", &name.lang);
+            name_elmt.add_text(&name.value);
             names_elmt.add_child(name_elmt);
         }
         names_elmt
@@ -251,9 +252,11 @@ impl From<Uuid> for ElmtUuid {
     }
 }
 
-impl Display for ElmtUuid {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{{}}}", self.uuid)
+impl From<&ElmtUuid> for XMLElement {
+    fn from(uuid: &ElmtUuid) -> Self {
+        let mut uuid_xml = XMLElement::new("uuid");
+        uuid_xml.add_attribute("uuid", format!("{{{}}}", uuid.uuid));
+        uuid_xml
     }
 }
 

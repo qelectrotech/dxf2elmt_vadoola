@@ -26,7 +26,7 @@ impl From<&entities::Line> for Line {
             length1: 1.5, //why is this statically set at 1.5?
             end1: LineEnd::None,
             x2: line.p2.x,
-            y2: line.p2.y,
+            y2: -line.p2.y,
             length2: 1.5, //why is this statically set at 1.5?
             end2: LineEnd::None,
 
