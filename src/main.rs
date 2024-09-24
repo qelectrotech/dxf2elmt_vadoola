@@ -95,6 +95,7 @@ fn main() -> Result<()> {
     let mut polyline_count: u32 = 0;
     let mut lwpolyline_count: u32 = 0;
     let mut solid_count: u32 = 0;
+    let mut block_count: u32 = 0;
     let mut other_count: u32 = 0;
 
     // Loop through all entities, counting the element types
@@ -127,6 +128,9 @@ fn main() -> Result<()> {
             EntityType::Solid(ref _solid) => {
                 solid_count += 1;
             }
+            EntityType::Insert(ref _insert) => {
+                block_count += 1;
+            }
             _ => {
                 other_count += 1;
             }
@@ -156,6 +160,7 @@ fn main() -> Result<()> {
         println!("Polylines: {polyline_count}");
         println!("LwPolylines: {lwpolyline_count}");
         println!("Solids: {solid_count}");
+        println!("Blocks: {block_count}");
         println!("Currently Unsupported: {other_count}");
 
         println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());

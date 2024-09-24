@@ -27,6 +27,7 @@ pub use polygon::Polygon;
 pub mod ellipse;
 pub use ellipse::Ellipse;
 
+
 #[derive(Debug)]
 pub struct Definition {
     r#type: ItemType,
@@ -196,11 +197,30 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<&Drawing> for Description {
     fn from(drw: &Drawing) -> Self {
+        //find base elements
+        let mut objects: Vec<Objects> = drw
+            .entities()
+            .filter_map(|ent| Objects::try_from(ent).ok())
+            .collect();
+
+        //search for blocks and add the base elements within them
+        for ins in drw.entities().filter_map(|e| match &e.specific {
+            EntityType::Insert(ins) => Some(ins),
+            _ => None,
+        }) {
+            //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
+            //blocks out of the drawing it works.
+            //I mean would this ever return more than 1? I would assume block names have to be unique?
+            //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
+            //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
+            //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
+            //and entity? So I don't think there is any easy way to get the handle
+            let block = drw.blocks().filter(|bl| bl.name == ins.name).take(1).next().unwrap();
+            objects.extend(block.entities.iter().filter_map(|ent| Objects::try_from(ent).ok()));
+
+        }
         Self {
-            objects: drw
-                .entities()
-                .filter_map(|ent| Objects::try_from(ent).ok())
-                .collect(),
+            objects
         }
     }
 }
