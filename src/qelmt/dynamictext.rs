@@ -1,4 +1,4 @@
-use super::two_dec;
+use super::{text, two_dec};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
@@ -61,7 +61,7 @@ impl From<(&entities::Text, HexColor)> for DynamicText {
 
 impl From<&DynamicText> for XMLElement {
     fn from(txt: &DynamicText) -> Self {
-        let mut dtxt_xml: XMLElement = XMLElement::new("dynamic_text");
+        let mut dtxt_xml = XMLElement::new("dynamic_text");
         dtxt_xml.add_attribute("x", two_dec(txt.x));
         dtxt_xml.add_attribute("y", two_dec(txt.y));
         dtxt_xml.add_attribute("z", two_dec(txt.z));
@@ -73,8 +73,16 @@ impl From<&DynamicText> for XMLElement {
         dtxt_xml.add_attribute("text_from", &txt.text_from);
         dtxt_xml.add_attribute("frame", txt.frame);
         dtxt_xml.add_attribute("text_width", txt.text_width);
-        dtxt_xml.add_attribute("text", &txt.text);
         dtxt_xml.add_attribute("color", txt.color.display_rgb());
+
+        //If I ever add support for other text_from types, element and composite text
+        //I'll need to add more smarts here, as there may be some other children components
+        //for now since it only supports user_text I'm just statically adding the single child
+        //component needed
+        //match txt.text_from
+        let mut text_xml = XMLElement::new("text");
+        text_xml.add_text(&txt.text);
+        dtxt_xml.add_child(text_xml);
 
         if let Some(i_name) = &txt.info_name {
             dtxt_xml.add_attribute("info_name", i_name);
