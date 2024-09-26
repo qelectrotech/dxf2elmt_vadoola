@@ -1,14 +1,17 @@
+use super::two_dec;
 use dxf::entities::{self, Circle};
 use simple_xml_builder::XMLElement;
-use super::two_dec;
 
 #[derive(Debug)]
 pub struct Ellipse {
     height: f64,
     width: f64,
     style: String,
-    x: f64,
-    y: f64,
+
+    //need to brush up on my Rust scoping rules, isn't there a way to make this pub to just the module?
+    pub x: f64,
+    pub y: f64,
+
     antialias: bool,
 }
 

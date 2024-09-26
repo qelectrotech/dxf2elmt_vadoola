@@ -3,7 +3,7 @@ use simple_xml_builder::XMLElement;
 use uuid::Uuid;
 //use std::str::FromStr;
 //use strum::EnumString;
-use dxf::entities::{AttributeDefinition, Entity, EntityType};
+use dxf::entities::{Entity, EntityType};
 use dxf::Drawing;
 use hex_color::HexColor;
 use std::convert::TryFrom;
@@ -27,6 +27,11 @@ pub use polygon::Polygon;
 pub mod ellipse;
 pub use ellipse::Ellipse;
 
+#[derive(Debug)]
+enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
 
 #[derive(Debug)]
 pub struct Definition {
@@ -42,7 +47,6 @@ pub struct Definition {
     element_infos: Option<ElemInfos>,
     informations: Option<String>,
     description: Description,
-
     //counts
 }
 
@@ -110,23 +114,50 @@ enum Objects {
     Text(Text),
     Line(Line),
     //Terminal(Terminal),
+    Block(Vec<Objects>),
 }
 
-impl TryFrom<&Entity> for Objects {
+impl TryFrom<(&Entity, f64, f64)> for Objects {
     type Error = &'static str; //add better error later
 
-    fn try_from(ent: &Entity) -> Result<Self, Self::Error> {
-        match ent.specific {
-            EntityType::Circle(ref circle) => Ok(Objects::Ellipse(circle.into())),
-            EntityType::Line(ref line) => Ok(Objects::Line(line.into())),
-            EntityType::Arc(ref arc) => Ok(Objects::Arc(arc.into())),
-            EntityType::Spline(ref spline) => Ok(Objects::Polygon(
-                (
+    fn try_from((ent, offset_x, offset_y): (&Entity, f64, f64)) -> Result<Self, Self::Error> {
+        match &ent.specific {
+            EntityType::Circle(ref circle) => {
+                let mut ellipse: Ellipse = circle.into();
+                ellipse.x += offset_x;
+                ellipse.y -= offset_y;
+                Ok(Objects::Ellipse(ellipse))
+            }
+            EntityType::Line(ref line) => {
+                let mut line: Line = line.into();
+                line.x1 += offset_x;
+                line.y1 -= offset_y;
+
+                line.x2 += offset_x;
+                line.y2 -= offset_y;
+
+                Ok(Objects::Line(line))
+            }
+            EntityType::Arc(ref arc) => {
+                let mut arc: Arc = arc.into();
+                arc.x += offset_x;
+                arc.y -= offset_y;
+
+                Ok(Objects::Arc(arc))
+            }
+            EntityType::Spline(ref spline) => {
+                let mut poly: Polygon = (
                     spline,
                     100, /*need to passin spline value from cli, just hard codding value for now */
                 )
-                    .into(),
-            )),
+                    .into();
+
+                for cord in &mut poly.coordinates {
+                    cord.x += offset_x;
+                    cord.y -= offset_y;
+                }
+                Ok(Objects::Polygon(poly))
+            }
             EntityType::Text(ref text) => {
                 Ok(
                     //right now the dxf2elmt defaults to making all text Static Text...
@@ -137,42 +168,98 @@ impl TryFrom<&Entity> for Objects {
                     //I might change the default parameter to use Dynamic Text
                     if false {
                         //how best to pass in the flag for dynamic text or not....should the flag also default to true?
-                        Objects::Text(
-                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into(),
-                        )
+                        let mut text: Text =
+                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                        text.x += offset_x;
+                        text.y -= offset_y;
+                        Objects::Text(text)
                     } else {
-                        Objects::DynamicText(
-                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into(),
-                        )
+                        let mut dtext: DynamicText =
+                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                        dtext.x += offset_x;
+                        dtext.y += offset_y;
+                        Objects::DynamicText(dtext)
                     },
                 )
             }
-            EntityType::Ellipse(ref ellipse) => Ok(Objects::Ellipse(ellipse.into())),
-            EntityType::Polyline(ref polyline) => Ok(Objects::Polygon(polyline.into())),
-            EntityType::LwPolyline(ref lwpolyline) => Ok(Objects::Polygon(lwpolyline.into())),
-            EntityType::Solid(ref solid) => Ok(Objects::Polygon(solid.into())),
+            EntityType::Ellipse(ref ellipse) => {
+                let mut ellipse: Ellipse = ellipse.into();
+                ellipse.x += offset_x;
+                ellipse.y -= offset_y;
+                Ok(Objects::Ellipse(ellipse))
+            }
+            EntityType::Polyline(ref polyline) => {
+                let mut poly: Polygon = polyline.into();
+                for cord in &mut poly.coordinates {
+                    cord.x += offset_x;
+                    cord.y -= offset_y;
+                }
+                Ok(Objects::Polygon(poly))
+            }
+            EntityType::LwPolyline(ref lwpolyline) => {
+                let mut poly: Polygon = lwpolyline.into();
+                for cord in &mut poly.coordinates {
+                    cord.x += offset_x;
+                    cord.y -= offset_y;
+                }
+                Ok(Objects::Polygon(poly))
+            }
+            EntityType::Solid(ref solid) => {
+                let mut poly: Polygon = solid.into();
+                for cord in &mut poly.coordinates {
+                    cord.x += offset_x;
+                    cord.y -= offset_y;
+                }
+                Ok(Objects::Polygon(poly))
+            }
             _ => Err("Need to implement the rest of the entity types"),
         }
     }
 }
 
-impl From<&Objects> for XMLElement {
+impl TryFrom<&Entity> for Objects {
+    type Error = &'static str; //add better error later
+
+    fn try_from(ent: &Entity) -> Result<Self, Self::Error> {
+        Objects::try_from((ent, 0f64, 0f64))
+    }
+}
+
+impl From<&Objects> for Either<XMLElement, Vec<XMLElement>> {
     fn from(obj: &Objects) -> Self {
         match obj {
-            Objects::Arc(arc) => arc.into(),
-            Objects::Ellipse(ell) => ell.into(),
-            Objects::Polygon(poly) => poly.into(),
-            Objects::DynamicText(dtext) => dtext.into(),
-            Objects::Text(txt) => txt.into(),
-            Objects::Line(line) => line.into(),
+            Objects::Arc(arc) => Either::Left(arc.into()),
+            Objects::Ellipse(ell) => Either::Left(ell.into()),
+            Objects::Polygon(poly) => Either::Left(poly.into()),
+            Objects::DynamicText(dtext) => Either::Left(dtext.into()),
+            Objects::Text(txt) => Either::Left(txt.into()),
+            Objects::Line(line) => Either::Left(line.into()),
+            Objects::Block(block) => Either::Right(
+                block
+                    .iter()
+                    .filter_map(|obj| XMLElement::try_from(obj).ok())
+                    .collect(),
+            ),
         }
     }
 }
 
-//Does it make sense to have all these seperate vectors?
-//or a vec of enums of. With the enum being one of each type....I guess that might keep the ordering better?
-//since they could be interleaved.
-//it could have polygon, text, line, polygon. Right now they would get jumbled with all the seperate Vecs...
+impl TryFrom<&Objects> for XMLElement {
+    type Error = &'static str; // add better error later
+
+    fn try_from(obj: &Objects) -> Result<Self, Self::Error> {
+        match obj {
+            Objects::Arc(arc) => Ok(arc.into()),
+            Objects::Ellipse(ell) => Ok(ell.into()),
+            Objects::Polygon(poly) => Ok(poly.into()),
+            Objects::DynamicText(dtext) => Ok(dtext.into()),
+            Objects::Text(txt) => Ok(txt.into()),
+            Objects::Line(line) => Ok(line.into()),
+            _ => Err("Unsupported"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Description {
     objects: Vec<Objects>,
@@ -182,7 +269,10 @@ impl From<&Description> for XMLElement {
     fn from(desc: &Description) -> Self {
         let mut desc_xml = XMLElement::new("description");
         for obj in &desc.objects {
-            desc_xml.add_child(obj.into());
+            match obj.into() {
+                Either::Left(elem) => desc_xml.add_child(elem),
+                Either::Right(vec) => vec.into_iter().for_each(|elem| desc_xml.add_child(elem)),
+            }
         }
         desc_xml
     }
@@ -197,30 +287,47 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<&Drawing> for Description {
     fn from(drw: &Drawing) -> Self {
-        //find base elements
-        let mut objects: Vec<Objects> = drw
-            .entities()
-            .filter_map(|ent| Objects::try_from(ent).ok())
-            .collect();
-
-        //search for blocks and add the base elements within them
-        for ins in drw.entities().filter_map(|e| match &e.specific {
-            EntityType::Insert(ins) => Some(ins),
-            _ => None,
-        }) {
-            //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
-            //blocks out of the drawing it works.
-            //I mean would this ever return more than 1? I would assume block names have to be unique?
-            //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
-            //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
-            //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
-            //and entity? So I don't think there is any easy way to get the handle
-            let block = drw.blocks().filter(|bl| bl.name == ins.name).take(1).next().unwrap();
-            objects.extend(block.entities.iter().filter_map(|ent| Objects::try_from(ent).ok()));
-
-        }
         Self {
-            objects
+            objects: drw
+                .entities()
+                .filter_map(|ent| {
+                    match &ent.specific {
+                        EntityType::Insert(ins) => {
+                            //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
+                            //blocks out of the drawing it works.
+                            //I mean would this ever return more than 1? I would assume block names have to be unique?
+                            //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
+                            //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
+                            //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
+                            //and entity? So I don't think there is any easy way to get the handle
+                            let block = drw
+                                .blocks()
+                                .filter(|bl| bl.name == ins.name)
+                                .take(1)
+                                .next()
+                                .unwrap();
+                            let offset_x = block.base_point.x;
+                            let offset_y = block.base_point.y;
+
+                            //hmm so if I'm reading the docs correctly this is what I want the insertion point in the drawing to translate
+                            //the entitieis by...but in my sample drawing this is always coming back as (0,0)....
+                            dbg!(offset_x);
+                            dbg!(offset_y);
+
+                            Some(Objects::Block(
+                                block
+                                    .entities
+                                    .iter()
+                                    .filter_map(|ent| {
+                                        Objects::try_from((ent, offset_x, offset_y)).ok()
+                                    })
+                                    .collect(),
+                            ))
+                        }
+                        _ => Objects::try_from(ent).ok(),
+                    }
+                })
+                .collect(),
         }
     }
 }
@@ -449,7 +556,6 @@ pub struct ElemInfo {
 
     value: String,
 }
-
 
 #[inline]
 pub fn two_dec(num: f64) -> f64 {

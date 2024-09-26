@@ -1,8 +1,8 @@
+use super::two_dec;
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
-use super::two_dec;
 
 use super::{HAlignment, VAlignment};
 
@@ -10,8 +10,8 @@ use super::{HAlignment, VAlignment};
 pub struct DynamicText {
     text: String,
     info_name: Option<String>,
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
     z: f64,
     rotation: f64,
     uuid: Uuid,

@@ -1,17 +1,20 @@
+use super::two_dec;
 use super::LineEnd;
 use dxf::entities;
 use simple_xml_builder::XMLElement;
-use super::two_dec;
 
 #[derive(Debug)]
 pub struct Line {
     length2: f64,
     end2: LineEnd,
     length1: f64,
-    x1: f64,
-    y1: f64,
-    x2: f64,
-    y2: f64,
+
+    //need to brush up on my Rust scoping rules, isn't there a way to make this pub to just the module?
+    pub x1: f64,
+    pub y1: f64,
+    pub x2: f64,
+    pub y2: f64,
+
     style: String,
     end1: LineEnd,
     antialias: bool,

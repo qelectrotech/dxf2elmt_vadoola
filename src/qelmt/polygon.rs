@@ -1,12 +1,12 @@
+use super::two_dec;
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
-use super::two_dec;
 
 #[derive(Debug)]
-struct Coordinate {
-    x: f64,
-    y: f64,
+pub struct Coordinate {
+    pub x: f64,
+    pub y: f64,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -42,7 +42,7 @@ impl Add for Point {
 pub struct Polygon {
     style: String,
     antialias: bool,
-    coordinates: Vec<Coordinate>,
+    pub coordinates: Vec<Coordinate>,
     closed: bool,
 }
 
@@ -117,7 +117,6 @@ impl From<(&Spline, u32)> for Polygon {
             bspline::BSpline::new(spline.degree_of_curve.try_into().unwrap(), points, knots);
         let step: f64 =
             (curr_spline.knot_domain().1 - curr_spline.knot_domain().0) / (spline_step as f64);
-        let mut j: f64 = curr_spline.knot_domain().0;
 
         //there is probably a way to clean up some of this logic and use iterators
         //although it looks like step_by doesn't work on a f64 range...hmmm
@@ -193,12 +192,12 @@ impl From<&Polygon> for XMLElement {
             poly_xml.add_attribute(format!("x{}", (count + 1)), two_dec(coord.x));
             poly_xml.add_attribute(format!("y{}", (count + 1)), two_dec(coord.y));
         }
-        
+
         //closed defaults to true, don't need to write it out unless it's false
         if !poly.closed {
             poly_xml.add_attribute("closed", poly.closed);
         }
-        
+
         poly_xml.add_attribute("antialias", poly.antialias);
         poly_xml.add_attribute("style", &poly.style);
         poly_xml

@@ -80,7 +80,7 @@ fn main() -> Result<()> {
     let drawing: Drawing = Drawing::load_file(&args.file_name).context(format!(
         "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
     ))?;
-    let q_elmt = Definition::new(friendly_file_name.to_owned(),  args.spline_step, &drawing);
+    let q_elmt = Definition::new(friendly_file_name.to_owned(), args.spline_step, &drawing);
     if !args.verbose && args.info {
         println!("{friendly_file_name} loaded...");
     }
@@ -99,41 +99,39 @@ fn main() -> Result<()> {
     let mut other_count: u32 = 0;
 
     // Loop through all entities, counting the element types
-    drawing.entities().for_each(|e| {
-        match e.specific {
-            EntityType::Circle(ref _circle) => {
-                circle_count += 1;
-            }
-            EntityType::Line(ref _line) => {
-                line_count += 1;
-            }
-            EntityType::Arc(ref _arc) => {
-                arc_count += 1;
-            }
-            EntityType::Spline(ref _spline) => {
-                spline_count += 1;
-            }
-            EntityType::Text(ref _text) => {
-                text_count += 1;
-            }
-            EntityType::Ellipse(ref _ellipse) => {
-                ellipse_count += 1;
-            }
-            EntityType::Polyline(ref _polyline) => {
-                polyline_count += 1;
-            }
-            EntityType::LwPolyline(ref _lwpolyline) => {
-                lwpolyline_count += 1;
-            }
-            EntityType::Solid(ref _solid) => {
-                solid_count += 1;
-            }
-            EntityType::Insert(ref _insert) => {
-                block_count += 1;
-            }
-            _ => {
-                other_count += 1;
-            }
+    drawing.entities().for_each(|e| match e.specific {
+        EntityType::Circle(ref _circle) => {
+            circle_count += 1;
+        }
+        EntityType::Line(ref _line) => {
+            line_count += 1;
+        }
+        EntityType::Arc(ref _arc) => {
+            arc_count += 1;
+        }
+        EntityType::Spline(ref _spline) => {
+            spline_count += 1;
+        }
+        EntityType::Text(ref _text) => {
+            text_count += 1;
+        }
+        EntityType::Ellipse(ref _ellipse) => {
+            ellipse_count += 1;
+        }
+        EntityType::Polyline(ref _polyline) => {
+            polyline_count += 1;
+        }
+        EntityType::LwPolyline(ref _lwpolyline) => {
+            lwpolyline_count += 1;
+        }
+        EntityType::Solid(ref _solid) => {
+            solid_count += 1;
+        }
+        EntityType::Insert(ref _insert) => {
+            block_count += 1;
+        }
+        _ => {
+            other_count += 1;
         }
     });
 

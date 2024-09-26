@@ -1,14 +1,14 @@
+use super::two_dec;
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
-use super::two_dec;
 
 #[derive(Debug)]
 pub struct Text {
     rotation: f64,
     value: String,
-    x: f64,
-    y: f64,
+    pub x: f64,
+    pub y: f64,
     font: String,
     color: HexColor,
 }

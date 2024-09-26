@@ -1,11 +1,13 @@
+use super::two_dec;
 use dxf::entities;
 use simple_xml_builder::XMLElement;
-use super::two_dec;
 
 #[derive(Debug)]
 pub struct Arc {
-    x: f64,
-    y: f64,
+    //need to brush up on my Rust scoping rules, isn't there a way to make this pub to just the module?
+    pub x: f64,
+    pub y: f64,
+
     width: f64,
     height: f64,
     start: f64,
