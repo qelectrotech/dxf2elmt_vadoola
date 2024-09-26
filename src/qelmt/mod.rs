@@ -306,13 +306,8 @@ impl From<&Drawing> for Description {
                                 .take(1)
                                 .next()
                                 .unwrap();
-                            let offset_x = block.base_point.x;
-                            let offset_y = block.base_point.y;
-
-                            //hmm so if I'm reading the docs correctly this is what I want the insertion point in the drawing to translate
-                            //the entitieis by...but in my sample drawing this is always coming back as (0,0)....
-                            dbg!(offset_x);
-                            dbg!(offset_y);
+                            let offset_x = ins.location.x;
+                            let offset_y = ins.location.y;
 
                             Some(Objects::Block(
                                 block

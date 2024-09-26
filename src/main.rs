@@ -5,6 +5,9 @@
 // TODO: add support for missing entities
 // TODO: Add in some unit tests
 // TODO: See if I can find some open licences DXF files I could use to test against
+//      * https://github.com/GSStnb/dxfBlocks
+//      * https://people.math.sc.edu/Burkardt/data/dxf/dxf.html
+//      * https://github.com/jscad/sample-files/tree/master
 // TODO: See if i can add any parallelization.
 // NOTE: The dxf crate hasn't had an update in 3 years, I was wondering if there were any other crates worth updating to.
 //       it looks like the answer is no...but the crate isn't completely dead. it hasn't had a release in 3 years, but had
