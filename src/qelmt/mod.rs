@@ -1,3 +1,4 @@
+use dxf::objects::Object;
 use simple_xml_builder::XMLElement;
 //use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -76,7 +77,7 @@ impl Definition {
             },
             element_infos: None,
             informations: Some("Created using dxf2elmt!".into()),
-            description: drw.into(),
+            description: (drw, spline_step).into(),
         }
     }
 }
@@ -117,10 +118,12 @@ enum Objects {
     Block(Vec<Objects>),
 }
 
-impl TryFrom<(&Entity, f64, f64)> for Objects {
+impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
     type Error = &'static str; //add better error later
 
-    fn try_from((ent, offset_x, offset_y): (&Entity, f64, f64)) -> Result<Self, Self::Error> {
+    fn try_from(
+        (ent, spline_step, offset_x, offset_y): (&Entity, u32, f64, f64),
+    ) -> Result<Self, Self::Error> {
         match &ent.specific {
             EntityType::Circle(ref circle) => {
                 let mut ellipse: Ellipse = circle.into();
@@ -146,11 +149,7 @@ impl TryFrom<(&Entity, f64, f64)> for Objects {
                 Ok(Objects::Arc(arc))
             }
             EntityType::Spline(ref spline) => {
-                let mut poly: Polygon = (
-                    spline,
-                    100, /*need to passin spline value from cli, just hard codding value for now */
-                )
-                    .into();
+                let mut poly: Polygon = (spline, spline_step).into();
 
                 for cord in &mut poly.coordinates {
                     cord.x += offset_x;
@@ -212,16 +211,19 @@ impl TryFrom<(&Entity, f64, f64)> for Objects {
                 }
                 Ok(Objects::Polygon(poly))
             }
-            _ => Err("Need to implement the rest of the entity types"),
+            _ => {
+                dbg!(&ent.specific);
+                Err("Need to implement the rest of the entity types")
+            }
         }
     }
 }
 
-impl TryFrom<&Entity> for Objects {
+impl TryFrom<(&Entity, u32)> for Objects {
     type Error = &'static str; //add better error later
 
-    fn try_from(ent: &Entity) -> Result<Self, Self::Error> {
-        Objects::try_from((ent, 0f64, 0f64))
+    fn try_from((ent, spline_step): (&Entity, u32)) -> Result<Self, Self::Error> {
+        Objects::try_from((ent, spline_step, 0f64, 0f64))
     }
 }
 
@@ -285,8 +287,8 @@ impl From<&Description> for XMLElement {
         drw.entities().filter_map(|ent| Objects::try_from(ent).ok()).collect();
     }
 }*/
-impl From<&Drawing> for Description {
-    fn from(drw: &Drawing) -> Self {
+impl From<(&Drawing, u32)> for Description {
+    fn from((drw, spline_step): (&Drawing, u32)) -> Self {
         Self {
             objects: drw
                 .entities()
@@ -314,12 +316,13 @@ impl From<&Drawing> for Description {
                                     .entities
                                     .iter()
                                     .filter_map(|ent| {
-                                        Objects::try_from((ent, offset_x, offset_y)).ok()
+                                        Objects::try_from((ent, spline_step, offset_x, offset_y))
+                                            .ok()
                                     })
                                     .collect(),
                             ))
                         }
-                        _ => Objects::try_from(ent).ok(),
+                        _ => Objects::try_from((ent, spline_step)).ok(),
                     }
                 })
                 .collect(),
@@ -328,7 +331,7 @@ impl From<&Drawing> for Description {
 }
 
 //probably don't need to worry about this as they won't exist in the dxf...
-pub struct Terminal {
+/*pub struct Terminal {
     x: f64,
     y: f64,
     uuid: Uuid,
@@ -338,7 +341,7 @@ pub struct Terminal {
     //  Generic
     //  Indoor Terminal Block
     //  External Terminal Block
-}
+}*/
 
 #[derive(Debug)]
 pub struct Names {

@@ -61,7 +61,7 @@ struct Args {
     dtext: bool,
 
     /// Determine the number of lines you want each spline to have (more lines = greater resolution)
-    #[clap(short, long, value_parser, default_value_t = 100)]
+    #[clap(short, long, value_parser, default_value_t = 10)]
     spline_step: u32,
 
     /// Toggles information output... defaults to off
