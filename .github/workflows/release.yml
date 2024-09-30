@@ -2,7 +2,7 @@
 # REF:
 #   1. https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstrategymatrixinclude
 #
-name: Create Release Draft
+name: Create Release
 
 on:
   workflow_dispatch:
@@ -47,6 +47,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
 
     - name: Update Rust Toolchain Target
       run: |
