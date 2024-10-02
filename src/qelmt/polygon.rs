@@ -138,6 +138,7 @@ impl From<(&Spline, u32)> for Polygon {
             }
             coords
         };
+
         Polygon {
             coordinates,
             closed: spline.get_is_closed(),

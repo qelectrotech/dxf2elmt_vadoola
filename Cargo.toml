@@ -1,6 +1,6 @@
 [package]
 name = "dxf2elmt"
-version = "0.3.4"
+version = "0.4.0"
 edition = "2021"
 description = "A CLI program to convert .dxf files into .elmt files"
 authors = ["Vadoola <github: vadoola>", "Antonio Aguilar <github: antonioaja>"]

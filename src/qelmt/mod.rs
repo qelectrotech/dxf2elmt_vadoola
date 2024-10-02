@@ -151,11 +151,17 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
             EntityType::Spline(ref spline) => {
                 let mut poly: Polygon = (spline, spline_step).into();
 
-                for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+                match poly.coordinates.len() {
+                    0 | 1 => Err("Err removing empty Spline"),
+                    //2 => //convert to line
+                    _ => {
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
+                    }
                 }
-                Ok(Objects::Polygon(poly))
             }
             EntityType::Text(ref text) => {
                 Ok(
@@ -189,30 +195,50 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
             }
             EntityType::Polyline(ref polyline) => {
                 let mut poly: Polygon = polyline.into();
-                for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+
+                match poly.coordinates.len() {
+                    0 | 1 => Err("Err removing empty Polyline"),
+                    //2 => //convert to line
+                    _ => {
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
+                    }
                 }
-                Ok(Objects::Polygon(poly))
             }
             EntityType::LwPolyline(ref lwpolyline) => {
                 let mut poly: Polygon = lwpolyline.into();
-                for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+                match poly.coordinates.len() {
+                    0 | 1 => Err("Err removing LwPolyline"),
+                    //2 => 
+                    _ => {
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
+                    }
                 }
-                Ok(Objects::Polygon(poly))
             }
             EntityType::Solid(ref solid) => {
                 let mut poly: Polygon = solid.into();
-                for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+
+                match poly.coordinates.len() {
+                    0  | 1 => Err("Err removing solid"),
+                    //2 => //convert to line
+                    _ => {
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
+                    }
                 }
-                Ok(Objects::Polygon(poly))
             }
             _ => {
-                dbg!(&ent.specific);
+                //dbg!(&ent.specific);
                 Err("Need to implement the rest of the entity types")
             }
         }
@@ -289,6 +315,14 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
+        /*println!("{:?}", drw.header.alternate_dimensioning_scale_factor);
+        println!("{:?}", drw.header.alternate_dimensioning_units);
+        println!("{:?}", drw.header.default_drawing_units);
+        println!("{:?}", drw.header.drawing_units);
+        println!("{}", drw.header.file_name);
+        println!("{}", drw.header.project_name);
+        println!("{:?}", drw.header.unit_format);*/
+        
         Self {
             objects: drw
                 .entities()
