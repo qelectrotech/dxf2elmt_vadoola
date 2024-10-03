@@ -12,9 +12,9 @@ For example:
 ./dxf2elmt my_file.dxf
 ```
 
-The .elmt file be outputted in the same directory as the executable. It will retain the name of the .dxf file.
+The .elmt file will be outputted in the same directory as the executable. It will retain the name of the .dxf file.
 
-If you wish to forgo outputting a .elmt file, you can use the "-v" argument for verbose output. This will output the contents of the .elmt file into the terminal without actually creating the file. For example:
+If you wish to forgo outputting a .elmt file, you can use the "-v" argument for verbose output. This will output the contents of the .elmt file to stdout without actually creating the file. For example:
 
 ```bash
 ./dxf2elmt my_file.dxf -v
@@ -31,14 +31,15 @@ If you wish to forgo outputting a .elmt file, you can use the "-v" argument for 
 * LwPolylines
 * Solids
 * Splines
+* Blocks
 
 ## To Do
 
 * Support for the following
-    * Step control for splines
     * Remaining 2d entities
 
 * Better error messages
+* Logging
 
 ## Known Issue(s)
 
@@ -47,7 +48,7 @@ If you wish to forgo outputting a .elmt file, you can use the "-v" argument for 
 
 ## Compiling
 
-Compiled using Cargo (1.62.0).
+Compiled using Rust (MSRV 1.74.1).
 
 ## Credits
 
