@@ -152,7 +152,9 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 let mut poly: Polygon = (spline, spline_step).into();
 
                 match poly.coordinates.len() {
-                    0 | 1 => Err("Err removing empty Spline"),
+                    0 | 1 => Err("Error removing empty Spline"),
+                    //I'll need to improve my understanding of splines and the math here
+                    //to make sure I do this correclty.
                     //2 => //convert to line
                     _ => {
                         for cord in &mut poly.coordinates {
@@ -194,12 +196,20 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 Ok(Objects::Ellipse(ellipse))
             }
             EntityType::Polyline(ref polyline) => {
-                let mut poly: Polygon = polyline.into();
+                match polyline.__vertices_and_handles.len() {
+                    0 | 1 => Err("Error empty Polyline"),
+                    2 => {
+                        let mut line = Line::try_from(polyline)?;
+                        line.x1 += offset_x;
+                        line.y1 -= offset_y;
 
-                match poly.coordinates.len() {
-                    0 | 1 => Err("Err removing empty Polyline"),
-                    //2 => //convert to line
+                        line.x2 += offset_x;
+                        line.y2 -= offset_y;
+
+                        Ok(Objects::Line(line))
+                    }
                     _ => {
+                        let mut poly: Polygon = polyline.into();
                         for cord in &mut poly.coordinates {
                             cord.x += offset_x;
                             cord.y -= offset_y;
@@ -209,11 +219,20 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 }
             }
             EntityType::LwPolyline(ref lwpolyline) => {
-                let mut poly: Polygon = lwpolyline.into();
-                match poly.coordinates.len() {
-                    0 | 1 => Err("Err removing LwPolyline"),
-                    //2 => 
+                match lwpolyline.vertices.len() {
+                    0 | 1 => Err("Error empty LwPolyline"),
+                    2 => {
+                        let mut line = Line::try_from(lwpolyline)?;
+                        line.x1 += offset_x;
+                        line.y1 -= offset_y;
+
+                        line.x2 += offset_x;
+                        line.y2 -= offset_y;
+
+                        Ok(Objects::Line(line))
+                    }
                     _ => {
+                        let mut poly: Polygon = lwpolyline.into();
                         for cord in &mut poly.coordinates {
                             cord.x += offset_x;
                             cord.y -= offset_y;
@@ -225,17 +244,11 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
             EntityType::Solid(ref solid) => {
                 let mut poly: Polygon = solid.into();
 
-                match poly.coordinates.len() {
-                    0  | 1 => Err("Err removing solid"),
-                    //2 => //convert to line
-                    _ => {
-                        for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
-                        }
-                        Ok(Objects::Polygon(poly))
-                    }
+                for cord in &mut poly.coordinates {
+                    cord.x += offset_x;
+                    cord.y -= offset_y;
                 }
+                Ok(Objects::Polygon(poly))
             }
             _ => {
                 //dbg!(&ent.specific);

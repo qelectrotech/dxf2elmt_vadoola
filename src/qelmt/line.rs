@@ -1,6 +1,8 @@
 use super::two_dec;
 use super::LineEnd;
 use dxf::entities;
+use dxf::entities::LwPolyline;
+use dxf::entities::Polyline;
 use simple_xml_builder::XMLElement;
 
 #[derive(Debug)]
@@ -36,7 +38,7 @@ impl From<&entities::Line> for Line {
             //reasons...I'm trying to think if there is a time we might want to turn it on?
             antialias: false,
             style: if line.thickness > 0.5 {
-                "line-style:normal;line-weight:normal;filling:none;color:black}"
+                "line-style:normal;line-weight:normal;filling:none;color:black"
             } else {
                 "line-style:normal;line-weight:thin;filling:none;color:black"
             }
@@ -44,6 +46,69 @@ impl From<&entities::Line> for Line {
         }
     }
 }
+
+impl TryFrom<&Polyline> for Line {
+    type Error = &'static str; //add better error later
+
+    fn try_from(poly: &Polyline) -> Result<Self, Self::Error> {
+        if poly.__vertices_and_handles.len() != 2 {
+            return Err("Error can't convert polyline with more than 2 points into a Line");
+        }
+
+        Ok(Line {
+            x1: poly.__vertices_and_handles[0].0.location.x,
+            y1: -poly.__vertices_and_handles[0].0.location.y,
+            length1: 1.5, //why is this statically set at 1.5?
+            end1: LineEnd::None,
+            x2: poly.__vertices_and_handles[1].0.location.x,
+            y2: -poly.__vertices_and_handles[1].0.location.y,
+            length2: 1.5, //why is this statically set at 1.5?
+            end2: LineEnd::None,
+
+            //in the original code antialias is always set to false...I'm guessing for performance
+            //reasons...I'm trying to think if there is a time we might want to turn it on?
+            antialias: false,
+            style: if poly.thickness > 0.5 {
+                "line-style:normal;line-weight:normal;filling:none;color:black"
+            } else {
+                "line-style:normal;line-weight:thin;filling:none;color:black"
+            }
+            .into(),
+        })
+    }
+}
+
+impl TryFrom<&LwPolyline> for Line {
+    type Error = &'static str; //add better error later
+
+    fn try_from(poly: &LwPolyline) -> Result<Self, Self::Error> {
+        if poly.vertices.len() != 2 {
+            return Err("Error can't convert polyline with more than 2 points into a Line");
+        }
+
+        Ok(Line {
+            x1: poly.vertices[0].x,
+            y1: -poly.vertices[0].y,
+            length1: 1.5, //why is this statically set at 1.5?
+            end1: LineEnd::None,
+            x2: poly.vertices[1].x,
+            y2: -poly.vertices[1].y,
+            length2: 1.5, //why is this statically set at 1.5?
+            end2: LineEnd::None,
+
+            //in the original code antialias is always set to false...I'm guessing for performance
+            //reasons...I'm trying to think if there is a time we might want to turn it on?
+            antialias: false,
+            style: if poly.thickness > 0.1 {
+                "line-style:normal;line-weight:normal;filling:none;color:black"
+            } else {
+                "line-style:normal;line-weight:thin;filling:none;color:black"
+            }
+            .into(),
+        })
+    }
+}
+
 
 impl From<&Line> for XMLElement {
     fn from(line: &Line) -> Self {
