@@ -195,52 +195,48 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 ellipse.y -= offset_y;
                 Ok(Objects::Ellipse(ellipse))
             }
-            EntityType::Polyline(ref polyline) => {
-                match polyline.__vertices_and_handles.len() {
-                    0 | 1 => Err("Error empty Polyline"),
-                    2 => {
-                        let mut line = Line::try_from(polyline)?;
-                        line.x1 += offset_x;
-                        line.y1 -= offset_y;
+            EntityType::Polyline(ref polyline) => match polyline.__vertices_and_handles.len() {
+                0 | 1 => Err("Error empty Polyline"),
+                2 => {
+                    let mut line = Line::try_from(polyline)?;
+                    line.x1 += offset_x;
+                    line.y1 -= offset_y;
 
-                        line.x2 += offset_x;
-                        line.y2 -= offset_y;
+                    line.x2 += offset_x;
+                    line.y2 -= offset_y;
 
-                        Ok(Objects::Line(line))
-                    }
-                    _ => {
-                        let mut poly: Polygon = polyline.into();
-                        for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
-                        }
-                        Ok(Objects::Polygon(poly))
-                    }
+                    Ok(Objects::Line(line))
                 }
-            }
-            EntityType::LwPolyline(ref lwpolyline) => {
-                match lwpolyline.vertices.len() {
-                    0 | 1 => Err("Error empty LwPolyline"),
-                    2 => {
-                        let mut line = Line::try_from(lwpolyline)?;
-                        line.x1 += offset_x;
-                        line.y1 -= offset_y;
-
-                        line.x2 += offset_x;
-                        line.y2 -= offset_y;
-
-                        Ok(Objects::Line(line))
+                _ => {
+                    let mut poly: Polygon = polyline.into();
+                    for cord in &mut poly.coordinates {
+                        cord.x += offset_x;
+                        cord.y -= offset_y;
                     }
-                    _ => {
-                        let mut poly: Polygon = lwpolyline.into();
-                        for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
-                        }
-                        Ok(Objects::Polygon(poly))
-                    }
+                    Ok(Objects::Polygon(poly))
                 }
-            }
+            },
+            EntityType::LwPolyline(ref lwpolyline) => match lwpolyline.vertices.len() {
+                0 | 1 => Err("Error empty LwPolyline"),
+                2 => {
+                    let mut line = Line::try_from(lwpolyline)?;
+                    line.x1 += offset_x;
+                    line.y1 -= offset_y;
+
+                    line.x2 += offset_x;
+                    line.y2 -= offset_y;
+
+                    Ok(Objects::Line(line))
+                }
+                _ => {
+                    let mut poly: Polygon = lwpolyline.into();
+                    for cord in &mut poly.coordinates {
+                        cord.x += offset_x;
+                        cord.y -= offset_y;
+                    }
+                    Ok(Objects::Polygon(poly))
+                }
+            },
             EntityType::Solid(ref solid) => {
                 let mut poly: Polygon = solid.into();
 
@@ -335,7 +331,7 @@ impl From<(&Drawing, u32)> for Description {
         println!("{}", drw.header.file_name);
         println!("{}", drw.header.project_name);
         println!("{:?}", drw.header.unit_format);*/
-        
+
         Self {
             objects: drw
                 .entities()

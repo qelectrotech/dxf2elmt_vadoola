@@ -109,7 +109,6 @@ impl TryFrom<&LwPolyline> for Line {
     }
 }
 
-
 impl From<&Line> for XMLElement {
     fn from(line: &Line) -> Self {
         let mut line_xml: XMLElement = XMLElement::new("line");
