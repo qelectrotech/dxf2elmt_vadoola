@@ -57,7 +57,7 @@ impl From<&Polyline> for Polygon {
                     y: -vertex.location.y,
                 })
                 .collect(),
-            closed: poly.get_is_closed(),
+            closed: poly.is_closed(),
             //in the original code antialias is always set to false...I'm guessing for performance
             //reasons...I'm trying to think if there is a time we might want to turn it on?
             antialias: false,
@@ -82,7 +82,7 @@ impl From<&LwPolyline> for Polygon {
                     y: -vertex.y,
                 })
                 .collect(),
-            closed: poly.get_is_closed(),
+            closed: poly.is_closed(),
             //in the original code antialias is always set to false...I'm guessing for performance
             //reasons...I'm trying to think if there is a time we might want to turn it on?
             antialias: false,
@@ -141,7 +141,7 @@ impl From<(&Spline, u32)> for Polygon {
 
         Polygon {
             coordinates,
-            closed: spline.get_is_closed(),
+            closed: spline.is_closed(),
             //in the original code antialias is always set to false...I'm guessing for performance
             //reasons...I'm trying to think if there is a time we might want to turn it on?
             antialias: false,
