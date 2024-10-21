@@ -17,7 +17,7 @@ lto = true
 opt-level = 3
 
 [dependencies]
-dxf = "0.5.0"
+dxf = { git = "https://github.com/ixmilia/dxf-rs.git" }
 simple-xml-builder = "1.1.0"
 bspline = "1.1.0"
 uuid = { version = "1.10.0", features = ["serde", "v4"] }
