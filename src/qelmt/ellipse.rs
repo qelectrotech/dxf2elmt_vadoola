@@ -1,4 +1,4 @@
-use super::two_dec;
+use super::{two_dec, ScaleEntity};
 use dxf::entities::{self, Circle};
 use simple_xml_builder::XMLElement;
 
@@ -62,5 +62,14 @@ impl From<&Ellipse> for XMLElement {
         ell_xml.add_attribute("antialias", ell.antialias);
         ell_xml.add_attribute("style", &ell.style);
         ell_xml
+    }
+}
+
+impl ScaleEntity for Ellipse {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        self.width *= fact_x;
+        self.height *= fact_y;
     }
 }

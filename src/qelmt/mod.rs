@@ -51,6 +51,10 @@ pub struct Definition {
     //counts
 }
 
+trait ScaleEntity {
+    fn scale(&mut self, fact_x: f64, fact_y: f64);
+}
+
 impl Definition {
     pub fn new(name: impl Into<String>, spline_step: u32, drw: &Drawing) -> Self {
         Definition {

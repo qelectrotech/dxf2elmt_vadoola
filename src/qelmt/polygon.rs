@@ -1,8 +1,14 @@
-use super::two_dec;
+use super::{two_dec, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
 use std::ops::{Add, Mul};
 
+//wait Why do I have a coordinate AND a Point struct, that are
+//essentially the same. It's been a couple of months, but I'm not
+//seeing why I would have done this....almost makes me wondering
+//if I started, then stopped, and then didn't realize where I left off
+//and started again but used a different name...?
+//Might need to take a closer look and clean this up.
 #[derive(Debug)]
 pub struct Coordinate {
     pub x: f64,
@@ -202,5 +208,14 @@ impl From<&Polygon> for XMLElement {
         poly_xml.add_attribute("antialias", poly.antialias);
         poly_xml.add_attribute("style", &poly.style);
         poly_xml
+    }
+}
+
+impl ScaleEntity for Polygon {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.coordinates.iter_mut().for_each(|coord| {
+            coord.x *= fact_x;
+            coord.y *= fact_y;
+        });
     }
 }
