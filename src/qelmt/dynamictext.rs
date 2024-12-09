@@ -59,6 +59,51 @@ impl From<(&entities::Text, HexColor)> for DynamicText {
     }
 }
 
+impl From<(&entities::MText, HexColor)> for DynamicText {
+    fn from((txt, color): (&entities::MText, HexColor)) -> Self {
+        dbg!(&txt.insertion_point);
+        dbg!(&txt.text);
+        for t in &txt.extended_text {
+            dbg!(t);
+        }
+        
+        DynamicText {
+            x: txt.insertion_point.x,
+            y: -txt.insertion_point.y,
+            z: txt.insertion_point.z,
+            rotation: if txt.rotation_angle.abs().round() as i64 % 360 != 0 {
+                txt.rotation_angle - 180.0
+            } else {
+                0.0
+            },
+            uuid: Uuid::new_v4(),
+            font: if &txt.text_style_name == "STANDARD" {
+                "Arial Narrow".into()
+            } else {
+                txt.text_style_name.clone()
+            },
+
+            //I don't recall off the top of my head if DXF Supports text alignment...check
+            h_alignment: HAlignment::Center,
+            v_alignment: VAlignment::Center,
+
+            text_from: "UserText".into(),
+            frame: false,
+            text_width: -1, //why is this -1, does that just mean auto calculate?
+            color,
+
+            //There are 2 text fields on MTEXT, .text a String and .extended_text a Vec<String>
+            //Most of the example files I have at the moment are single line MTEXT.
+            //I editred one of them in QCad, and added a few lines. The value came through in the text field
+            //with extended_text being empty, and the enwlines were deliniated by '\\P'...I might need to look
+            //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
+            text: txt.text.replace("\\P", "\n"),
+            keep_visual_rotation: false,
+            info_name: None,
+        }
+    }
+}
+
 impl From<&DynamicText> for XMLElement {
     fn from(txt: &DynamicText) -> Self {
         let mut dtxt_xml = XMLElement::new("dynamic_text");

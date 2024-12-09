@@ -195,6 +195,31 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 ellipse.y -= offset_y;
                 Ok(Objects::Ellipse(ellipse))
             }
+            EntityType::MText(ref mtext) => {
+                Ok(
+                    //right now the dxf2elmt defaults to making all text Static Text...
+                    //it was requested by the QET devs to add in support for Dynamic text
+                    //which was added, but it defaults to OFF, and QET doesn't pass the parameter
+                    //to enable it...I'm wondering if it makes more sense to default to use dynamic text
+                    //for now I'll set it to use dynamic text, and once I get the CLI flag passing through
+                    //I might change the default parameter to use Dynamic Text
+                    if false {
+                        //how best to pass in the flag for dynamic text or not....should the flag also default to true?
+                        /*let mut text: Text =
+                            (mtext, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                            text.x += offset_x;
+                            text.y -= offset_y;
+                        Objects::Text(text)*/
+                        todo!();
+                    } else {
+                        let mut dtext: DynamicText =
+                            (mtext, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                        dtext.x += offset_x;
+                        dtext.y += offset_y;
+                        Objects::DynamicText(dtext)
+                    },
+                )
+            }
             EntityType::Polyline(ref polyline) => match polyline.__vertices_and_handles.len() {
                 0 | 1 => Err("Error empty Polyline"),
                 2 => {

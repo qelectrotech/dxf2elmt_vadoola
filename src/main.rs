@@ -50,7 +50,7 @@ mod qelmt;
 struct Args {
     /// The .dxf file to convert
     //#[clap(short, long, value_parser)]
-    file_name: PathBuf,
+    file_names: Vec<PathBuf>,
 
     /// Activates verbose output, eliminates .elmt file writing
     #[clap(short, long, value_parser, default_value_t = false)]
@@ -79,96 +79,98 @@ fn main() -> Result<()> {
     let args: Args = Args::parse_from(wild::args());
 
     // Load dxf file
-    let friendly_file_name = args.file_name.file_stem().unwrap().to_string_lossy();
-    let drawing: Drawing = Drawing::load_file(&args.file_name).context(format!(
-        "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
-    ))?;
-    let q_elmt = Definition::new(friendly_file_name.to_owned(), args.spline_step, &drawing);
-    if !args.verbose && args.info {
-        println!("{friendly_file_name} loaded...");
-    }
+    for file_name in args.file_names {
+        let friendly_file_name = file_name.file_stem().unwrap().to_string_lossy();
+        let drawing: Drawing = Drawing::load_file(&file_name).context(format!(
+            "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
+        ))?;
+        let q_elmt = Definition::new(friendly_file_name.to_owned(), args.spline_step, &drawing);
+        if !args.verbose && args.info {
+            println!("{friendly_file_name} loaded...");
+        }
 
-    // Intialize counts
-    let mut circle_count: u32 = 0;
-    let mut line_count: u32 = 0;
-    let mut arc_count: u32 = 0;
-    let mut spline_count: u32 = 0;
-    let mut text_count: u32 = 0;
-    let mut ellipse_count: u32 = 0;
-    let mut polyline_count: u32 = 0;
-    let mut lwpolyline_count: u32 = 0;
-    let mut solid_count: u32 = 0;
-    let mut block_count: u32 = 0;
-    let mut other_count: u32 = 0;
+        // Intialize counts
+        let mut circle_count: u32 = 0;
+        let mut line_count: u32 = 0;
+        let mut arc_count: u32 = 0;
+        let mut spline_count: u32 = 0;
+        let mut text_count: u32 = 0;
+        let mut ellipse_count: u32 = 0;
+        let mut polyline_count: u32 = 0;
+        let mut lwpolyline_count: u32 = 0;
+        let mut solid_count: u32 = 0;
+        let mut block_count: u32 = 0;
+        let mut other_count: u32 = 0;
 
-    // Loop through all entities, counting the element types
-    drawing.entities().for_each(|e| match e.specific {
-        EntityType::Circle(ref _circle) => {
-            circle_count += 1;
-        }
-        EntityType::Line(ref _line) => {
-            line_count += 1;
-        }
-        EntityType::Arc(ref _arc) => {
-            arc_count += 1;
-        }
-        EntityType::Spline(ref _spline) => {
-            spline_count += 1;
-        }
-        EntityType::Text(ref _text) => {
-            text_count += 1;
-        }
-        EntityType::Ellipse(ref _ellipse) => {
-            ellipse_count += 1;
-        }
-        EntityType::Polyline(ref _polyline) => {
-            polyline_count += 1;
-        }
-        EntityType::LwPolyline(ref _lwpolyline) => {
-            lwpolyline_count += 1;
-        }
-        EntityType::Solid(ref _solid) => {
-            solid_count += 1;
-        }
-        EntityType::Insert(ref _insert) => {
-            block_count += 1;
-        }
-        _ => {
-            other_count += 1;
-        }
-    });
+        // Loop through all entities, counting the element types
+        drawing.entities().for_each(|e| match e.specific {
+            EntityType::Circle(ref _circle) => {
+                circle_count += 1;
+            }
+            EntityType::Line(ref _line) => {
+                line_count += 1;
+            }
+            EntityType::Arc(ref _arc) => {
+                arc_count += 1;
+            }
+            EntityType::Spline(ref _spline) => {
+                spline_count += 1;
+            }
+            EntityType::Text(ref _text) => {
+                text_count += 1;
+            }
+            EntityType::Ellipse(ref _ellipse) => {
+                ellipse_count += 1;
+            }
+            EntityType::Polyline(ref _polyline) => {
+                polyline_count += 1;
+            }
+            EntityType::LwPolyline(ref _lwpolyline) => {
+                lwpolyline_count += 1;
+            }
+            EntityType::Solid(ref _solid) => {
+                solid_count += 1;
+            }
+            EntityType::Insert(ref _insert) => {
+                block_count += 1;
+            }
+            _ => {
+                other_count += 1;
+            }
+        });
 
-    // Create output file for .elmt
-    let out_file = file_writer::create_file(args.verbose, args.info, &args.file_name);
+        // Create output file for .elmt
+        let out_file = file_writer::create_file(args.verbose, args.info, &file_name);
 
-    // Write to output file
-    XMLElement::from(&q_elmt)
-        .write(&out_file)
-        .context("Failed to write output file.")?;
+        // Write to output file
+        XMLElement::from(&q_elmt)
+            .write(&out_file)
+            .context("Failed to write output file.")?;
 
-    if args.info {
-        println!("Conversion complete!\n");
+        if args.info {
+            println!("Conversion complete!\n");
 
-        // Print stats
-        println!("STATS");
-        println!("~~~~~~~~~~~~~~~");
-        println!("Circles: {circle_count}");
-        println!("Lines: {line_count}");
-        println!("Arcs: {arc_count}");
-        println!("Splines: {spline_count}");
-        println!("Texts: {text_count}");
-        println!("Ellipses: {ellipse_count}");
-        println!("Polylines: {polyline_count}");
-        println!("LwPolylines: {lwpolyline_count}");
-        println!("Solids: {solid_count}");
-        println!("Blocks: {block_count}");
-        println!("Currently Unsupported: {other_count}");
+            // Print stats
+            println!("STATS");
+            println!("~~~~~~~~~~~~~~~");
+            println!("Circles: {circle_count}");
+            println!("Lines: {line_count}");
+            println!("Arcs: {arc_count}");
+            println!("Splines: {spline_count}");
+            println!("Texts: {text_count}");
+            println!("Ellipses: {ellipse_count}");
+            println!("Polylines: {polyline_count}");
+            println!("LwPolylines: {lwpolyline_count}");
+            println!("Solids: {solid_count}");
+            println!("Blocks: {block_count}");
+            println!("Currently Unsupported: {other_count}");
 
-        println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
-    }
+            println!("\nTime Elapsed: {} ms", now.elapsed().as_millis());
+        }
 
-    if args.verbose {
-        file_writer::verbose_print(out_file);
+        if args.verbose {
+            file_writer::verbose_print(out_file);
+        }
     }
 
     Ok(())
