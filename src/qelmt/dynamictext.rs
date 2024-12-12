@@ -61,11 +61,11 @@ impl From<(&entities::Text, HexColor)> for DynamicText {
 
 impl From<(&entities::MText, HexColor)> for DynamicText {
     fn from((txt, color): (&entities::MText, HexColor)) -> Self {
-        dbg!(&txt.insertion_point);
+        /*dbg!(&txt.insertion_point);
         dbg!(&txt.text);
         for t in &txt.extended_text {
             dbg!(t);
-        }
+        }*/
 
         DynamicText {
             x: txt.insertion_point.x,
@@ -94,8 +94,8 @@ impl From<(&entities::MText, HexColor)> for DynamicText {
 
             //There are 2 text fields on MTEXT, .text a String and .extended_text a Vec<String>
             //Most of the example files I have at the moment are single line MTEXT.
-            //I editred one of them in QCad, and added a few lines. The value came through in the text field
-            //with extended_text being empty, and the enwlines were deliniated by '\\P'...I might need to look
+            //I edited one of them in QCad, and added a few lines. The value came through in the text field
+            //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
             //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
             text: txt.text.replace("\\P", "\n"),
             keep_visual_rotation: false,
@@ -151,7 +151,7 @@ impl ScaleEntity for DynamicText {
         //as origionally done by Antonio. I will have to add some sort of processing
         //of the font string and store it's components to make it easier to manipulate
         //such as scaling of the fonts etc.
-        todo!();
+        //todo!();
         //font_size *= factX.min(factY);
     }
 }

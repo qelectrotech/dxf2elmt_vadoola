@@ -1,3 +1,4 @@
+use dxf::enums::Units;
 use dxf::objects::Object;
 use simple_xml_builder::XMLElement;
 //use serde::{Deserialize, Serialize};
@@ -37,10 +38,10 @@ enum Either<L, R> {
 #[derive(Debug)]
 pub struct Definition {
     r#type: ItemType,
-    width: i32,
-    height: i32,
-    hotspot_x: i32,
-    hotspot_y: i32,
+    width: f64,
+    height: f64,
+    hotspot_x: f64,
+    hotspot_y: f64,
     version: String,
     link_type: LinkType,
     uuid: ElmtUuid,
@@ -52,24 +53,41 @@ pub struct Definition {
 }
 
 trait ScaleEntity {
+    //honestly would I ever want to scale the x and y by different dimensions?
+    //I'm thinking maybe I just have a single scale factor, it always scales proportiontly
     fn scale(&mut self, fact_x: f64, fact_y: f64);
 }
 
 impl Definition {
     pub fn new(name: impl Into<String>, spline_step: u32, drw: &Drawing) -> Self {
+        let scale_factor = Self::scale_factor(drw.header.default_drawing_units);
+        let description = {
+            let mut description: Description = (drw, spline_step).into();
+            description.scale(scale_factor, scale_factor);
+            description
+        };
+        let view_pt = drw.header.view_center.clone();
+        dbg!(view_pt);
+        let view_ht = drw.header.view_height;
+        dbg!(view_ht);
+        dbg!(drw.header.insertion_base.clone());
+        dbg!(drw.header.minimum_drawing_extents.clone());
+        dbg!(drw.header.maximum_drawing_extents.clone());
+        
+        let view: Vec<&dxf::tables::View> = drw.views().collect();
+        dbg!(view);
+
+        dbg!(drw.header.default_drawing_units);
+
+        let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x) * scale_factor).round();
         Definition {
             r#type: ItemType::Element,
-
-            //The original code had the height, and width hard coded to 10
-            //and the hotspots hard coded to 5. I'm not sure why this is?
-            //Maybe actually calculating the size wasn't worth it? I'm not sure
-            //if that info is part of the dxf. And maybe when you open he elemnt
-            //in the elemtent editor it corrects it anyway. Just look into it, and
-            //se if this is something that needs to get adjusted.
-            width: 10,
-            height: 10,
-            hotspot_x: 5,
-            hotspot_y: 5,
+            width,
+            height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y) * scale_factor).round(),
+            //need to go look up in QET source, exactly how the hot spot is calculated, but at the moment this seems to be somewhat accrurate..probably no worse than
+            //the hard coded, 5, 5
+            hotspot_x: width,
+            hotspot_y: 0.0,
             version: "0.8.0".into(),
             link_type: LinkType::Simple,
             uuid: Uuid::new_v4().into(),
@@ -81,8 +99,54 @@ impl Definition {
             },
             element_infos: None,
             informations: Some("Created using dxf2elmt!".into()),
-            description: (drw, spline_step).into(),
+            //description: (drw, spline_step).into(),
+            description,
         }
+    }
+
+    fn scale_factor(unit: Units) -> f64 {
+        //I'm not entirely sure this is the best way to determine how to scale the images.
+        //but I need to convert from real world units to pixels some how, and Assuming an A4 Paper
+        //makes sense....Another option would be assume a 96dpi monitor...but 700px8.2677165354 inches,
+        //actually gives 84.6666 dpi...so it's not far off. So for now unless I come up with something better
+        //Below is how I will determine scaling based on the dxf.
+        //If based on an A4 sheet of paper for the default QET Template, that's
+        //8 rows at 80px high = 640px, plus a 60px title block, that's a height of 700px
+        //an A4 sheet of paper is 210mm high in landscape mode -> 700px / 210mm = 3⅓ px/mm
+        //so I should scale the values in the drawing by 3⅓ if the drawing is in mm
+        //conversion table for other units is below
+
+        //unit conversions taken from: https://www.unitconverters.net/length-converter.html
+
+        700.0 / match unit {
+            //Units::Unitless => 700.0, //if the drawing is unitless just assume it's in pixels, so we want to return 1.0 from the funciton
+            Units::Unitless => 7.291666666666667,//actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
+            Units::Inches => 8.2677165354,//8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
+            Units::Feet => 0.688976378,//0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
+            Units::Miles => 0.000130488,//0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
+            Units::Millimeters => 210.0,//210 is the Height (in landscape) of an A4 sheet of paper in mm
+            Units::Centimeters => 21.0,//21 is the Height (in landscape) of an A4 sheet of paper in cm
+            Units::Meters => 0.21,//0.21 is the Height (in landscape) of an A4 sheet of paper in m
+            Units::Kilometers => 0.00021,//0.00021 is the Height (in landscape) of an A4 sheet of paper in km
+            Units::Microinches => todo!(),
+            Units::Mils => todo!(),
+            Units::Yards => 0.2296587927,//0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
+            Units::Angstroms => 2_100_000_000.0,//2100000000 is the Height (in landscape) of an A4 sheet of paper in angstroms
+            Units::Nanometers => 210_000_000.0,//210000000 is the Height (in landscape) of an A4 sheet of paper in nanometers
+            Units::Microns => 210_000.0,//210000 is the Height (in landscape) of an A4 sheet of paper in micron / micrometer
+            Units::Decimeters => 2.1,//2.1 is the Height (in landscape) of an A4 sheet of paper in decimeter
+            Units::Decameters => 0.021,//0.021 is the Height (in landscape) of an A4 sheet of paper in decameter
+            Units::Hectometers => 0.0021,//0.0021 is the Height (in landscape) of an A4 sheet of paper in hectometer
+            Units::Gigameters => 0.00000000021,//0.00000000021 is the Height (in landscape) of an A4 sheet of paper in gigameters
+            Units::AstronomicalUnits => 1.403763295E-12,//1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
+            Units::LightYears => 2.219701751E-17,//2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
+            Units::Parsecs => 6.805636508E-18,//6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
+            Units::USSurveyFeet => todo!(),
+            Units::USSurveyInch => todo!(),
+            Units::USSurveyYard => todo!(),
+            Units::USSurveyMile => todo!(),
+        }
+
     }
 }
 
@@ -120,6 +184,20 @@ enum Objects {
     Line(Line),
     //Terminal(Terminal),
     Block(Vec<Objects>),
+}
+
+impl ScaleEntity for Objects {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        match self {
+            Objects::Arc(arc) => arc.scale(fact_x, fact_y),
+            Objects::Ellipse(ellipse) => ellipse.scale(fact_x, fact_y),
+            Objects::Polygon(polygon) => polygon.scale(fact_x, fact_y),
+            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact_x, fact_y),
+            Objects::Text(text) => text.scale(fact_x, fact_y),
+            Objects::Line(line) => line.scale(fact_x, fact_y),
+            Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
+        }
+    }
 }
 
 impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
@@ -280,6 +358,7 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 Err("Need to implement the rest of the entity types")
             }
         }
+
     }
 }
 
@@ -329,6 +408,12 @@ impl TryFrom<&Objects> for XMLElement {
 #[derive(Debug)]
 pub struct Description {
     objects: Vec<Objects>,
+}
+
+impl ScaleEntity for Description {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.objects.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y));
+    }
 }
 
 impl From<&Description> for XMLElement {

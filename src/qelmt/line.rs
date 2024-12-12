@@ -149,8 +149,3 @@ impl ScaleEntity for Line {
         self.length2 = self.length2.min(99.0);
     }
 }
-
-/*self.coordinates.iter_mut().for_each(|coord| {
-    coord.x *= fact_x;
-    coord.y *= fact_y;
-}); */

@@ -1,4 +1,4 @@
-use super::two_dec;
+use super::{two_dec, ScaleEntity};
 use dxf::entities;
 use simple_xml_builder::XMLElement;
 
@@ -65,5 +65,14 @@ impl From<&Arc> for XMLElement {
         arc_xml.add_attribute("antialias", arc.antialias);
         arc_xml.add_attribute("style", &arc.style);
         arc_xml
+    }
+}
+
+impl ScaleEntity for Arc {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        self.width *= fact_x;
+        self.height *= fact_y;
     }
 }
