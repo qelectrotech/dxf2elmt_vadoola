@@ -1,7 +1,8 @@
 use super::{two_dec, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
+use itertools::Itertools;
 use simple_xml_builder::XMLElement;
-use std::ops::{Add, Mul};
+use std::{f64::consts::PI, ops::{Add, Mul}};
 
 //wait Why do I have a coordinate AND a Point struct, that are
 //essentially the same. It's been a couple of months, but I'm not
@@ -54,6 +55,46 @@ pub struct Polygon {
 
 impl From<&Polyline> for Polygon {
     fn from(poly: &Polyline) -> Self {
+        //if poly.is_closed() {
+            //Hmmm either this isn't going to work as well as I thought
+            //or I'm doing something wrong.
+            let poly_perim: f64 = {
+                let tmp_pts: Vec<dxf::Point> = poly.vertices().map(|v| v.clone().location).collect();
+                let len = tmp_pts.len();
+                tmp_pts.into_iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| {
+                    ((fst.x - sec.x).powf(2.0) - (fst.y - sec.y).powf(2.0)).abs().sqrt()
+                })
+                .take(len)
+                .sum()
+            };
+            dbg!(poly_perim);
+
+            let poly_area = {
+                //because instead of being able to access the Vec like in LwPolyline, verticies() returns
+                //an iter of dxf Vertex's which don't implment clone so I can't use circular_tuple_windows
+                //there is probably a cleaner way of iterating over this, but it's late, I'm getting tired
+                //and just want to see if this basic idea will work on my sample file, or see if I'm chasing
+                //up the wrong tree.
+                let tmp_pts: Vec<dxf::Point> = poly.vertices().map(|v| v.clone().location).collect();
+                let len = tmp_pts.len();
+                let mut poly_area: f64 = tmp_pts.into_iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| {
+                    (fst.x * sec.y) - (fst.y * sec.x)
+                })
+                .take(len)
+                .sum();
+                poly_area /= 2.0;
+                poly_area.abs()
+            };
+            dbg!(poly_area);
+            let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+            dbg!(t_ratio);
+        //}
+
+        
         Polygon {
             coordinates: poly
                 .__vertices_and_handles
@@ -79,6 +120,59 @@ impl From<&Polyline> for Polygon {
 
 impl From<&LwPolyline> for Polygon {
     fn from(poly: &LwPolyline) -> Self {
+        //probably no point in testing for circularity if the polygon is open....
+        //except if all sides of the polygon are listed with coordinates it can be a fully closed
+        //polygon and still be marked as is_closed = false....
+        //also it's unlikely to be meant to represent a circle if it's an irregular
+        //polygon, So it would probably make sense to do some other quick tests
+        //like the lengths are all the same before calculating the thinness ratio.
+        //Would it make sense to test the interior angles as well...that's technically
+        //required for it being a regular polygon, but might be a bit more complex to
+        //calculate from a vec of points...I wonder if that point should I just calculate
+        //the thinness ratio...or could it throw things off....actually if it's a closed
+        //polygon without the last side defined....I guess I would need to cacluate that
+        //side, because otherwise I could maybe have several equaly length side and a
+        //"closed" side that's unequal...but not if they have the same interior angle
+        //that last side couldn't be a different length....of course again....that would
+        //probably make the ratio show it as not close to a circle anyway...
+        //I think I'll start by testing the lengths, and if it's closed. Then calculate
+        //the ratio and see how this works in testing.
+        //or I could just use this: https://www.mathopenref.com/coordpolygonarea.html
+        //if poly.is_closed() {
+            //Hmmm either this isn't going to work as well as I thought
+            //or I'm doing something wrong.
+            //in my current teest file I know this is a pretty decent circle equivalent polyline
+            //but I'm getting a t_ratio of 1.6496.... no where near 1
+            //so have I done my math wrong?
+            let poly_perim: f64 = poly
+                .vertices
+                .iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| {
+                    ((fst.x - sec.x).powf(2.0) - (fst.y - sec.y).powf(2.0)).abs().sqrt()
+                })
+                .take(poly.vertices.len())
+                .sum();
+            dbg!(poly_perim);
+
+            let poly_area = {
+                let mut poly_area: f64 = poly
+                .vertices
+                .iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| {
+                    (fst.x * sec.y) - (fst.y * sec.x)
+                })
+                .take(poly.vertices.len())
+                .sum();
+                poly_area /= 2.0;
+                poly_area.abs()
+            };
+            dbg!(poly_area);
+            let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+            dbg!(t_ratio);
+        //}
+
         Polygon {
             coordinates: poly
                 .vertices

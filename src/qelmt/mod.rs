@@ -66,24 +66,16 @@ impl Definition {
             description.scale(scale_factor, scale_factor);
             description
         };
-        let view_pt = drw.header.view_center.clone();
-        dbg!(view_pt);
-        let view_ht = drw.header.view_height;
-        dbg!(view_ht);
-        dbg!(drw.header.insertion_base.clone());
-        dbg!(drw.header.minimum_drawing_extents.clone());
-        dbg!(drw.header.maximum_drawing_extents.clone());
-        
-        let view: Vec<&dxf::tables::View> = drw.views().collect();
-        dbg!(view);
 
-        dbg!(drw.header.default_drawing_units);
-
-        let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x) * scale_factor).round();
+        let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x)
+            * scale_factor)
+            .round();
         Definition {
             r#type: ItemType::Element,
             width,
-            height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y) * scale_factor).round(),
+            height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y)
+                * scale_factor)
+                .round(),
             //need to go look up in QET source, exactly how the hot spot is calculated, but at the moment this seems to be somewhat accrurate..probably no worse than
             //the hard coded, 5, 5
             hotspot_x: width,
@@ -118,35 +110,35 @@ impl Definition {
 
         //unit conversions taken from: https://www.unitconverters.net/length-converter.html
 
-        700.0 / match unit {
-            //Units::Unitless => 700.0, //if the drawing is unitless just assume it's in pixels, so we want to return 1.0 from the funciton
-            Units::Unitless => 7.291666666666667,//actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
-            Units::Inches => 8.2677165354,//8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
-            Units::Feet => 0.688976378,//0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
-            Units::Miles => 0.000130488,//0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
-            Units::Millimeters => 210.0,//210 is the Height (in landscape) of an A4 sheet of paper in mm
-            Units::Centimeters => 21.0,//21 is the Height (in landscape) of an A4 sheet of paper in cm
-            Units::Meters => 0.21,//0.21 is the Height (in landscape) of an A4 sheet of paper in m
-            Units::Kilometers => 0.00021,//0.00021 is the Height (in landscape) of an A4 sheet of paper in km
-            Units::Microinches => todo!(),
-            Units::Mils => todo!(),
-            Units::Yards => 0.2296587927,//0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
-            Units::Angstroms => 2_100_000_000.0,//2100000000 is the Height (in landscape) of an A4 sheet of paper in angstroms
-            Units::Nanometers => 210_000_000.0,//210000000 is the Height (in landscape) of an A4 sheet of paper in nanometers
-            Units::Microns => 210_000.0,//210000 is the Height (in landscape) of an A4 sheet of paper in micron / micrometer
-            Units::Decimeters => 2.1,//2.1 is the Height (in landscape) of an A4 sheet of paper in decimeter
-            Units::Decameters => 0.021,//0.021 is the Height (in landscape) of an A4 sheet of paper in decameter
-            Units::Hectometers => 0.0021,//0.0021 is the Height (in landscape) of an A4 sheet of paper in hectometer
-            Units::Gigameters => 0.00000000021,//0.00000000021 is the Height (in landscape) of an A4 sheet of paper in gigameters
-            Units::AstronomicalUnits => 1.403763295E-12,//1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
-            Units::LightYears => 2.219701751E-17,//2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
-            Units::Parsecs => 6.805636508E-18,//6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
-            Units::USSurveyFeet => todo!(),
-            Units::USSurveyInch => todo!(),
-            Units::USSurveyYard => todo!(),
-            Units::USSurveyMile => todo!(),
-        }
-
+        700.0
+            / match unit {
+                //Units::Unitless => 700.0, //if the drawing is unitless just assume it's in pixels, so we want to return 1.0 from the funciton
+                Units::Unitless => 7.291666666666667, //actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
+                Units::Inches => 8.2677165354, //8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
+                Units::Feet => 0.688976378, //0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
+                Units::Miles => 0.000130488, //0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
+                Units::Millimeters => 210.0, //210 is the Height (in landscape) of an A4 sheet of paper in mm
+                Units::Centimeters => 21.0, //21 is the Height (in landscape) of an A4 sheet of paper in cm
+                Units::Meters => 0.21, //0.21 is the Height (in landscape) of an A4 sheet of paper in m
+                Units::Kilometers => 0.00021, //0.00021 is the Height (in landscape) of an A4 sheet of paper in km
+                Units::Microinches => todo!(),
+                Units::Mils => todo!(),
+                Units::Yards => 0.2296587927, //0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
+                Units::Angstroms => 2_100_000_000.0, //2100000000 is the Height (in landscape) of an A4 sheet of paper in angstroms
+                Units::Nanometers => 210_000_000.0, //210000000 is the Height (in landscape) of an A4 sheet of paper in nanometers
+                Units::Microns => 210_000.0, //210000 is the Height (in landscape) of an A4 sheet of paper in micron / micrometer
+                Units::Decimeters => 2.1, //2.1 is the Height (in landscape) of an A4 sheet of paper in decimeter
+                Units::Decameters => 0.021, //0.021 is the Height (in landscape) of an A4 sheet of paper in decameter
+                Units::Hectometers => 0.0021, //0.0021 is the Height (in landscape) of an A4 sheet of paper in hectometer
+                Units::Gigameters => 0.00000000021, //0.00000000021 is the Height (in landscape) of an A4 sheet of paper in gigameters
+                Units::AstronomicalUnits => 1.403763295E-12, //1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
+                Units::LightYears => 2.219701751E-17, //2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
+                Units::Parsecs => 6.805636508E-18, //6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
+                Units::USSurveyFeet => todo!(),
+                Units::USSurveyInch => todo!(),
+                Units::USSurveyYard => todo!(),
+                Units::USSurveyMile => todo!(),
+            }
     }
 }
 
@@ -358,7 +350,6 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 Err("Need to implement the rest of the entity types")
             }
         }
-
     }
 }
 
@@ -412,7 +403,9 @@ pub struct Description {
 
 impl ScaleEntity for Description {
     fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.objects.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y));
+        self.objects
+            .iter_mut()
+            .for_each(|ob| ob.scale(fact_x, fact_y));
     }
 }
 
