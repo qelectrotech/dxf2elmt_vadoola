@@ -84,7 +84,7 @@ fn main() -> Result<()> {
         let drawing: Drawing = Drawing::load_file(&file_name).context(format!(
             "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
         ))?;
-        let q_elmt = Definition::new(friendly_file_name.to_owned(), args.spline_step, &drawing);
+        let q_elmt = Definition::new(friendly_file_name.clone(), args.spline_step, &drawing);
         if !args.verbose && args.info {
             println!("{friendly_file_name} loaded...");
         }

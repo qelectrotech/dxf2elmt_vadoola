@@ -1,5 +1,5 @@
-use super::{two_dec, ScaleEntity};
-use dxf::entities::{self, Circle};
+use super::{two_dec, Circularity, ScaleEntity};
+use dxf::entities::{self, Circle, LwPolyline, Polyline};
 use simple_xml_builder::XMLElement;
 
 #[derive(Debug)]
@@ -49,6 +49,88 @@ impl From<&entities::Ellipse> for Ellipse {
             antialias: false,
             style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
         }
+    }
+}
+
+impl TryFrom<&Polyline> for Ellipse {
+    type Error = &'static str; //add better error later
+
+    fn try_from(poly: &Polyline) -> Result<Self, Self::Error> {
+        if !poly.is_circular() {
+            return Err("Polyline has poor circularity, can't convert");
+        }
+        
+        let x = poly
+        .vertices()
+        .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.location.x));
+
+        let max_x = poly
+        .vertices()
+        .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.location.x));
+
+        let y = poly
+        .vertices()
+        .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.location.y));
+
+        let max_y = poly
+        .vertices()
+        .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.location.y));
+
+
+        Ok(Ellipse {
+            x,
+            y,
+            height: max_y - y,
+            width: max_x - x,
+
+            //in the original code antialias is always set to false...I'm guessing for performance
+            //reasons...I'm trying to think if there is a time we might want to turn it on?
+            antialias: false,
+            style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
+        })
+    }
+}
+
+impl TryFrom<&LwPolyline> for Ellipse {
+    type Error = &'static str; //add better error later
+
+    fn try_from(poly: &LwPolyline) -> Result<Self, Self::Error> {
+        if !poly.is_circular() {
+            return Err("Polyline has poor circularity, can't convert");
+        }
+        
+        let x = poly
+        .vertices
+        .iter()
+        .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.x));
+
+        let max_x = poly
+        .vertices
+        .iter()
+        .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.x));
+
+        let y = poly
+        .vertices
+        .iter()
+        .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.y));
+
+        let max_y = poly
+        .vertices
+        .iter()
+        .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.y));
+
+
+        Ok(Ellipse {
+            x,
+            y,
+            height: max_y - y,
+            width: max_x - x,
+
+            //in the original code antialias is always set to false...I'm guessing for performance
+            //reasons...I'm trying to think if there is a time we might want to turn it on?
+            antialias: false,
+            style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
+        })
     }
 }
 

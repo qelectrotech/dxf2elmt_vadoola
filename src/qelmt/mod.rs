@@ -1,5 +1,4 @@
 use dxf::enums::Units;
-use dxf::objects::Object;
 use simple_xml_builder::XMLElement;
 //use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -10,6 +9,9 @@ use dxf::Drawing;
 use hex_color::HexColor;
 use std::convert::TryFrom;
 use std::fmt::Display;
+use itertools::{CircularTupleWindows, Itertools};
+use dxf::entities::{LwPolyline, Polyline};
+use std::f64::consts::PI;
 
 pub mod arc;
 pub use arc::Arc;
@@ -56,6 +58,81 @@ trait ScaleEntity {
     //honestly would I ever want to scale the x and y by different dimensions?
     //I'm thinking maybe I just have a single scale factor, it always scales proportiontly
     fn scale(&mut self, fact_x: f64, fact_y: f64);
+}
+
+trait Circularity {
+    fn is_circular(&self) -> bool;
+}
+
+impl Circularity for Polyline {
+    fn is_circular(&self) -> bool {
+        let poly_perim: f64 = {
+            let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
+            let len = tmp_pts.len();
+            tmp_pts.into_iter()
+            .circular_tuple_windows()
+            .map(|(fst, sec)| {
+                ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0)).sqrt()
+            })
+            .take(len)
+            .sum()
+        };
+
+        let poly_area = {
+            //because instead of being able to access the Vec like in LwPolyline, verticies() returns
+            //an iter of dxf Vertex's which don't implment clone so I can't use circular_tuple_windows
+            //there is probably a cleaner way of iterating over this, but it's late, I'm getting tired
+            //and just want to see if this basic idea will work on my sample file, or see if I'm chasing
+            //up the wrong tree.
+            let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
+            let len = tmp_pts.len();
+            let mut poly_area: f64 = tmp_pts.into_iter()
+            .circular_tuple_windows()
+            .map(|(fst, sec)| {
+                (fst.x * sec.y) - (fst.y * sec.x)
+            })
+            .take(len)
+            .sum();
+            poly_area /= 2.0;
+            poly_area.abs()
+        };
+        let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+
+        (0.98..=1.02).contains(&t_ratio)
+    }
+}
+
+impl Circularity for LwPolyline {
+    fn is_circular(&self) -> bool {
+        let poly_perim: f64 = self
+            .vertices
+            .iter()
+            .circular_tuple_windows()
+            .map(|(fst, sec)| {
+                ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0)).abs().sqrt()
+            })
+            .take(self.vertices.len())
+            .sum();
+
+        let poly_area = {
+            let mut poly_area: f64 = self
+            .vertices
+            .iter()
+            .circular_tuple_windows()
+            .map(|(fst, sec)| {
+                (fst.x * sec.y) - (fst.y * sec.x)
+            })
+            .take(self.vertices.len())
+            .sum();
+            poly_area /= 2.0;
+            poly_area.abs()
+        };
+        let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+
+        //this boundry of 2% has been chosen arbitrarily, I might adjust this later
+        //I know in on of my sample files, I'm geting a value of 0.99....
+        (0.98..=1.02).contains(&t_ratio)
+    }
 }
 
 impl Definition {
@@ -307,12 +384,18 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                     Ok(Objects::Line(line))
                 }
                 _ => {
-                    let mut poly: Polygon = polyline.into();
-                    for cord in &mut poly.coordinates {
-                        cord.x += offset_x;
-                        cord.y -= offset_y;
+                    if let Ok(mut ellipse) = Ellipse::try_from(polyline) {
+                        ellipse.x += offset_x;
+                        ellipse.y -= offset_y;
+                        Ok(Objects::Ellipse(ellipse))
+                    } else {
+                        let mut poly: Polygon = polyline.into();
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
                     }
-                    Ok(Objects::Polygon(poly))
                 }
             },
             EntityType::LwPolyline(ref lwpolyline) => match lwpolyline.vertices.len() {
@@ -328,12 +411,18 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                     Ok(Objects::Line(line))
                 }
                 _ => {
-                    let mut poly: Polygon = lwpolyline.into();
-                    for cord in &mut poly.coordinates {
-                        cord.x += offset_x;
-                        cord.y -= offset_y;
+                    if let Ok(mut ellipse) = Ellipse::try_from(lwpolyline) {
+                        ellipse.x += offset_x;
+                        ellipse.y -= offset_y;
+                        Ok(Objects::Ellipse(ellipse))
+                    } else {
+                        let mut poly: Polygon = lwpolyline.into();
+                        for cord in &mut poly.coordinates {
+                            cord.x += offset_x;
+                            cord.y -= offset_y;
+                        }
+                        Ok(Objects::Polygon(poly))
                     }
-                    Ok(Objects::Polygon(poly))
                 }
             },
             EntityType::Solid(ref solid) => {

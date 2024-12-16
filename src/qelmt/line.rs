@@ -2,8 +2,7 @@ use super::two_dec;
 use super::LineEnd;
 use super::ScaleEntity;
 use dxf::entities;
-use dxf::entities::LwPolyline;
-use dxf::entities::Polyline;
+use dxf::entities::{LwPolyline, Polyline};
 use simple_xml_builder::XMLElement;
 
 #[derive(Debug)]
