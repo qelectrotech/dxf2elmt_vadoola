@@ -79,7 +79,7 @@ impl TryFrom<&Polyline> for Ellipse {
 
         Ok(Ellipse {
             x,
-            y,
+            y: -y,
             height: max_y - y,
             width: max_x - x,
 
@@ -122,7 +122,10 @@ impl TryFrom<&LwPolyline> for Ellipse {
 
         Ok(Ellipse {
             x,
-            y,
+            y: -y,
+            //ok so why in my test file are my ellipses offset in the y axis by 0.0729166666666667...which when scaled becomes 7 px...
+            //it's only on the y axis...my height seems correct....am I someone missing a vertex value?
+            //y: -(y+0.0729166666666667),
             height: max_y - y,
             width: max_x - x,
 
