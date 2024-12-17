@@ -9,7 +9,7 @@ use dxf::Drawing;
 use hex_color::HexColor;
 use std::convert::TryFrom;
 use std::fmt::Display;
-use itertools::{CircularTupleWindows, Itertools};
+use itertools::Itertools;
 use dxf::entities::{LwPolyline, Polyline};
 use std::f64::consts::PI;
 
@@ -190,27 +190,27 @@ impl Definition {
         700.0
             / match unit {
                 //Units::Unitless => 700.0, //if the drawing is unitless just assume it's in pixels, so we want to return 1.0 from the funciton
-                Units::Unitless => 7.291666666666667, //actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
-                Units::Inches => 8.2677165354, //8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
-                Units::Feet => 0.688976378, //0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
-                Units::Miles => 0.000130488, //0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
+                Units::Unitless => 7.291_666_666_666_667, //actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
+                Units::Inches => 8.267_716_535_4, //8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
+                Units::Feet => 0.688_976_378, //0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
+                Units::Miles => 0.000_130_488, //0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
                 Units::Millimeters => 210.0, //210 is the Height (in landscape) of an A4 sheet of paper in mm
                 Units::Centimeters => 21.0, //21 is the Height (in landscape) of an A4 sheet of paper in cm
                 Units::Meters => 0.21, //0.21 is the Height (in landscape) of an A4 sheet of paper in m
                 Units::Kilometers => 0.00021, //0.00021 is the Height (in landscape) of an A4 sheet of paper in km
                 Units::Microinches => todo!(),
                 Units::Mils => todo!(),
-                Units::Yards => 0.2296587927, //0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
-                Units::Angstroms => 2_100_000_000.0, //2100000000 is the Height (in landscape) of an A4 sheet of paper in angstroms
-                Units::Nanometers => 210_000_000.0, //210000000 is the Height (in landscape) of an A4 sheet of paper in nanometers
+                Units::Yards => 0.229_658_792_7, //0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
+                Units::Angstroms => 2.1e9, //2.1e9 is the Height (in landscape) of an A4 sheet of paper in angstroms
+                Units::Nanometers => 2.1e8, //2.1e8 is the Height (in landscape) of an A4 sheet of paper in nanometers
                 Units::Microns => 210_000.0, //210000 is the Height (in landscape) of an A4 sheet of paper in micron / micrometer
                 Units::Decimeters => 2.1, //2.1 is the Height (in landscape) of an A4 sheet of paper in decimeter
                 Units::Decameters => 0.021, //0.021 is the Height (in landscape) of an A4 sheet of paper in decameter
                 Units::Hectometers => 0.0021, //0.0021 is the Height (in landscape) of an A4 sheet of paper in hectometer
-                Units::Gigameters => 0.00000000021, //0.00000000021 is the Height (in landscape) of an A4 sheet of paper in gigameters
-                Units::AstronomicalUnits => 1.403763295E-12, //1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
-                Units::LightYears => 2.219701751E-17, //2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
-                Units::Parsecs => 6.805636508E-18, //6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
+                Units::Gigameters => 2.1e-10, //2.1e-10 is the Height (in landscape) of an A4 sheet of paper in gigameters
+                Units::AstronomicalUnits => 1.403763295e-12, //1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
+                Units::LightYears => 2.219701751e-17, //2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
+                Units::Parsecs => 6.805636508e-18, //6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
                 Units::USSurveyFeet => todo!(),
                 Units::USSurveyInch => todo!(),
                 Units::USSurveyYard => todo!(),

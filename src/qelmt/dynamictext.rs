@@ -1,4 +1,4 @@
-use super::{text, two_dec, ScaleEntity};
+use super::{two_dec, ScaleEntity};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
