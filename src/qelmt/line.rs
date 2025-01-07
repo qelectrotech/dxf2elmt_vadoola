@@ -146,4 +146,20 @@ impl ScaleEntity for Line {
         self.length2 *= fact_x.min(fact_y);
         self.length2 = self.length2.min(99.0);
     }
+
+    fn left_bound(&self) -> f64 {
+        self.x1.min(self.x2)
+    }
+
+    fn right_bound(&self) -> f64 {
+        self.x1.max(self.x2)
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y1.min(self.y2)
+    }
+
+    fn bot_bound(&self) -> f64 {
+        self.y1.max(self.y2)
+    }
 }

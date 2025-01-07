@@ -59,23 +59,28 @@ impl TryFrom<&Polyline> for Ellipse {
         if !poly.is_circular() {
             return Err("Polyline has poor circularity, can't convert");
         }
-        
+
+        //I did this fold because min requires the vertex to have the Ordering trait
+        //but I forogot min_by exists taking a lambda, so I could compare them using
+        //the value I need. However my first quick attemp wasn't working
+        //Using min_by would probably be more effecietn than the fold
+        //So this is probably worth coming back to...but it's a low priority
+        //because the below code works.
         let x = poly
-        .vertices()
-        .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.location.x));
+            .vertices()
+            .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.location.x));
 
         let max_x = poly
-        .vertices()
-        .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.location.x));
+            .vertices()
+            .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.location.x));
 
         let y = poly
-        .vertices()
-        .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.location.y));
+            .vertices()
+            .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.location.y));
 
         let max_y = poly
-        .vertices()
-        .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.location.y));
-
+            .vertices()
+            .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.location.y));
 
         Ok(Ellipse {
             x,
@@ -98,27 +103,26 @@ impl TryFrom<&LwPolyline> for Ellipse {
         if !poly.is_circular() {
             return Err("Polyline has poor circularity, can't convert");
         }
-        
+
         let x = poly
-        .vertices
-        .iter()
-        .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.x));
+            .vertices
+            .iter()
+            .fold(f64::MAX, |min_x, vtx| min_x.min(vtx.x));
 
         let max_x = poly
-        .vertices
-        .iter()
-        .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.x));
+            .vertices
+            .iter()
+            .fold(f64::MIN, |max_x, vtx| max_x.max(vtx.x));
 
         let y = poly
-        .vertices
-        .iter()
-        .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.y));
+            .vertices
+            .iter()
+            .fold(f64::MAX, |min_y, vtx| min_y.min(vtx.y));
 
         let max_y = poly
-        .vertices
-        .iter()
-        .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.y));
-
+            .vertices
+            .iter()
+            .fold(f64::MIN, |max_y, vtx| max_y.max(vtx.y));
 
         Ok(Ellipse {
             x,
@@ -153,5 +157,21 @@ impl ScaleEntity for Ellipse {
         self.y *= fact_y;
         self.width *= fact_x;
         self.height *= fact_y;
+    }
+
+    fn left_bound(&self) -> f64 {
+        self.x
+    }
+
+    fn right_bound(&self) -> f64 {
+        self.x + self.width
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y
+    }
+
+    fn bot_bound(&self) -> f64 {
+        self.y + self.height
     }
 }

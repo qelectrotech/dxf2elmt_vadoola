@@ -1,7 +1,10 @@
 use super::{two_dec, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
-use std::ops::{Add, Mul};
+use std::{
+    cmp::min,
+    ops::{Add, Mul},
+};
 
 //wait Why do I have a coordinate AND a Point struct, that are
 //essentially the same. It's been a couple of months, but I'm not
@@ -53,7 +56,7 @@ pub struct Polygon {
 }
 
 impl From<&Polyline> for Polygon {
-fn from(poly: &Polyline) -> Self {
+    fn from(poly: &Polyline) -> Self {
         Polygon {
             coordinates: poly
                 .__vertices_and_handles
@@ -217,5 +220,63 @@ impl ScaleEntity for Polygon {
             coord.x *= fact_x;
             coord.y *= fact_y;
         });
+    }
+
+    fn left_bound(&self) -> f64 {
+        let min_coord = self.coordinates.iter().min_by(|c1, c2| {
+            //if we get a None for the compare, then just returns Greater which will ignore it
+            //for finding the minimum
+            c1.x.partial_cmp(&c2.x)
+                .unwrap_or(std::cmp::Ordering::Greater)
+        });
+
+        if let Some(min_coord) = min_coord {
+            min_coord.x
+        } else {
+            0.0
+        }
+    }
+
+    fn right_bound(&self) -> f64 {
+        let max_coord = self.coordinates.iter().max_by(|c1, c2| {
+            //if we get a None for the compare, then just returns Less which will ignore it
+            //for finding the maximum
+            c1.x.partial_cmp(&c2.x).unwrap_or(std::cmp::Ordering::Less)
+        });
+
+        if let Some(max_coord) = max_coord {
+            max_coord.x
+        } else {
+            0.0
+        }
+    }
+
+    fn top_bound(&self) -> f64 {
+        let min_coord = self.coordinates.iter().min_by(|c1, c2| {
+            //if we get a None for the compare, then just returns Greater which will ignore it
+            //for finding the minimum
+            c1.y.partial_cmp(&c2.y)
+                .unwrap_or(std::cmp::Ordering::Greater)
+        });
+
+        if let Some(min_coord) = min_coord {
+            min_coord.y
+        } else {
+            0.0
+        }
+    }
+
+    fn bot_bound(&self) -> f64 {
+        let max_coord = self.coordinates.iter().max_by(|c1, c2| {
+            //if we get a None for the compare, then just returns Less which will ignore it
+            //for finding the maximum
+            c1.y.partial_cmp(&c2.y).unwrap_or(std::cmp::Ordering::Less)
+        });
+
+        if let Some(max_coord) = max_coord {
+            max_coord.y
+        } else {
+            0.0
+        }
     }
 }

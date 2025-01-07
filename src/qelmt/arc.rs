@@ -75,4 +75,20 @@ impl ScaleEntity for Arc {
         self.width *= fact_x;
         self.height *= fact_y;
     }
+
+    fn left_bound(&self) -> f64 {
+        self.x
+    }
+
+    fn right_bound(&self) -> f64 {
+        self.x + self.width
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y
+    }
+
+    fn bot_bound(&self) -> f64 {
+        self.y + self.height
+    }
 }

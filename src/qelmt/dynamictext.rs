@@ -1,4 +1,4 @@
-use super::{two_dec, ScaleEntity};
+use super::{two_dec, FontInfo, ScaleEntity};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
@@ -16,7 +16,7 @@ pub struct DynamicText {
     rotation: f64,
     uuid: Uuid,
     h_alignment: HAlignment,
-    font: String,
+    font: FontInfo,
     text_from: String,
     v_alignment: VAlignment,
     frame: bool,
@@ -38,9 +38,11 @@ impl From<(&entities::Text, HexColor)> for DynamicText {
             },
             uuid: Uuid::new_v4(),
             font: if &txt.text_style_name == "STANDARD" {
-                "Arial Narrow".into()
+                //"Arial Narrow".into()
+                Default::default()
             } else {
-                txt.text_style_name.clone()
+                //txt.text_style_name.clone()
+                Default::default()
             },
 
             //I don't recall off the top of my head if DXF Supports text alignment...check
@@ -78,9 +80,11 @@ impl From<(&entities::MText, HexColor)> for DynamicText {
             },
             uuid: Uuid::new_v4(),
             font: if &txt.text_style_name == "STANDARD" {
-                "Arial Narrow".into()
+                //"Arial Narrow".into()
+                Default::default()
             } else {
-                txt.text_style_name.clone()
+                //txt.text_style_name.clone()
+                Default::default()
             },
 
             //I don't recall off the top of my head if DXF Supports text alignment...check
@@ -153,5 +157,21 @@ impl ScaleEntity for DynamicText {
         //such as scaling of the fonts etc.
         //todo!();
         //font_size *= factX.min(factY);
+    }
+
+    fn left_bound(&self) -> f64 {
+        self.x
+    }
+
+    fn right_bound(&self) -> f64 {
+        todo!()
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y
+    }
+
+    fn bot_bound(&self) -> f64 {
+        todo!()
     }
 }

@@ -1,4 +1,4 @@
-use super::{two_dec, ScaleEntity};
+use super::{two_dec, FontInfo, ScaleEntity};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
@@ -9,7 +9,7 @@ pub struct Text {
     value: String,
     pub x: f64,
     pub y: f64,
-    font: String,
+    font: FontInfo,
     color: HexColor,
 }
 
@@ -25,9 +25,11 @@ impl From<(&entities::Text, HexColor)> for Text {
             },
             color,
             font: if &txt.text_style_name == "STANDARD" {
-                "Arial Narrow".into()
+                //"Arial Narrow".into()
+                Default::default()
             } else {
-                txt.text_style_name.clone()
+                //txt.text_style_name.clone()
+                Default::default()
             },
             value: txt.value.clone(),
         }
@@ -59,5 +61,23 @@ impl ScaleEntity for Text {
         //such as scaling of the fonts etc.
         todo!();
         //font_size *= factX.min(factY);
+    }
+
+    fn left_bound(&self) -> f64 {
+        self.x
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y
+    }
+
+    fn right_bound(&self) -> f64 {
+        //need to be able to measure text size to get this
+        todo!()
+    }
+
+    fn bot_bound(&self) -> f64 {
+        //need to be able to measure text size to get this
+        todo!()
     }
 }

@@ -5,13 +5,13 @@ use uuid::Uuid;
 //use std::str::FromStr;
 //use strum::EnumString;
 use dxf::entities::{Entity, EntityType};
+use dxf::entities::{LwPolyline, Polyline};
 use dxf::Drawing;
 use hex_color::HexColor;
-use std::convert::TryFrom;
-use std::fmt::Display;
 use itertools::Itertools;
-use dxf::entities::{LwPolyline, Polyline};
+use std::convert::TryFrom;
 use std::f64::consts::PI;
+use std::fmt::Display;
 
 pub mod arc;
 pub use arc::Arc;
@@ -54,10 +54,21 @@ pub struct Definition {
     //counts
 }
 
+//Since the ScaleEntity trait was added to all the objects/elements
+//and I need to add the get bounds to all it probably makes sense to have
+//them all within the same trait instead of multiple traits, as a collective
+//set of functions needed by the objects...but I should probably come up with
+//a better trait name then. For now I'll leave it and just get the code working
 trait ScaleEntity {
     //honestly would I ever want to scale the x and y by different dimensions?
     //I'm thinking maybe I just have a single scale factor, it always scales proportiontly
     fn scale(&mut self, fact_x: f64, fact_y: f64);
+
+    fn left_bound(&self) -> f64;
+    fn right_bound(&self) -> f64;
+
+    fn top_bound(&self) -> f64;
+    fn bot_bound(&self) -> f64;
 }
 
 trait Circularity {
@@ -69,13 +80,12 @@ impl Circularity for Polyline {
         let poly_perim: f64 = {
             let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
             let len = tmp_pts.len();
-            tmp_pts.into_iter()
-            .circular_tuple_windows()
-            .map(|(fst, sec)| {
-                ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0)).sqrt()
-            })
-            .take(len)
-            .sum()
+            tmp_pts
+                .into_iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0)).sqrt())
+                .take(len)
+                .sum()
         };
 
         let poly_area = {
@@ -86,13 +96,12 @@ impl Circularity for Polyline {
             //up the wrong tree.
             let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
             let len = tmp_pts.len();
-            let mut poly_area: f64 = tmp_pts.into_iter()
-            .circular_tuple_windows()
-            .map(|(fst, sec)| {
-                (fst.x * sec.y) - (fst.y * sec.x)
-            })
-            .take(len)
-            .sum();
+            let mut poly_area: f64 = tmp_pts
+                .into_iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
+                .take(len)
+                .sum();
             poly_area /= 2.0;
             poly_area.abs()
         };
@@ -109,21 +118,21 @@ impl Circularity for LwPolyline {
             .iter()
             .circular_tuple_windows()
             .map(|(fst, sec)| {
-                ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0)).abs().sqrt()
+                ((fst.x - sec.x).powf(2.0) + (fst.y - sec.y).powf(2.0))
+                    .abs()
+                    .sqrt()
             })
             .take(self.vertices.len())
             .sum();
 
         let poly_area = {
             let mut poly_area: f64 = self
-            .vertices
-            .iter()
-            .circular_tuple_windows()
-            .map(|(fst, sec)| {
-                (fst.x * sec.y) - (fst.y * sec.x)
-            })
-            .take(self.vertices.len())
-            .sum();
+                .vertices
+                .iter()
+                .circular_tuple_windows()
+                .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
+                .take(self.vertices.len())
+                .sum();
             poly_area /= 2.0;
             poly_area.abs()
         };
@@ -144,15 +153,17 @@ impl Definition {
             description
         };
 
-        let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x)
-            * scale_factor)
-            .round();
+        /*let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x)
+        * scale_factor)
+        .round();*/
+        let width = description.right_bound() - description.left_bound();
         Definition {
             r#type: ItemType::Element,
             width,
-            height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y)
-                * scale_factor)
-                .round(),
+            /*height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y)
+            * scale_factor)
+            .round(),*/
+            height: description.bot_bound() - description.top_bound(),
             //need to go look up in QET source, exactly how the hot spot is calculated, but at the moment this seems to be somewhat accrurate..probably no worse than
             //the hard coded, 5, 5
             hotspot_x: width,
@@ -172,6 +183,30 @@ impl Definition {
             description,
         }
     }
+
+    //for the hotspot code
+    //elements.cpp from QET_ElementScaler line 50
+    /*
+       void DefinitionLine::ReCalc(RectMinMax XYMinMax) {
+       // size and hotspots have to be re-calculated after scaling!
+           int w = (int)round(XYMinMax.width());
+           int h = (int)round(XYMinMax.height());
+
+           // calculation taken from QET-sources:
+           int upwidth = ((w/10)*10)+10;
+           if ((w%10) > 6) upwidth+=10;
+           int upheight = ((h/10)*10)+10;
+           if ((h%10) > 6) upheight+=10;
+           int xmargin = upwidth - w;
+           int ymargin = upheight - h;
+
+           // copy values to internal variables
+           width = upwidth;
+           height = upheight;
+           hotspot_x = -((int)round(XYMinMax.xmin() - (xmargin/2)));
+           hotspot_y = -((int)round(XYMinMax.ymin() - (ymargin/2)));
+       }
+    */
 
     fn scale_factor(unit: Units) -> f64 {
         //I'm not entirely sure this is the best way to determine how to scale the images.
@@ -265,6 +300,102 @@ impl ScaleEntity for Objects {
             Objects::Text(text) => text.scale(fact_x, fact_y),
             Objects::Line(line) => line.scale(fact_x, fact_y),
             Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
+        }
+    }
+
+    fn left_bound(&self) -> f64 {
+        match self {
+            Objects::Arc(arc) => arc.left_bound(),
+            Objects::Ellipse(ellipse) => ellipse.left_bound(),
+            Objects::Polygon(polygon) => polygon.left_bound(),
+            Objects::DynamicText(dynamic_text) => dynamic_text.left_bound(),
+            Objects::Text(text) => text.left_bound(),
+            Objects::Line(line) => line.left_bound(),
+            Objects::Block(vec) => {
+                let lb = vec.iter().min_by(|ob1, ob2| {
+                    ob1.left_bound()
+                        .partial_cmp(&ob2.left_bound())
+                        .unwrap_or(std::cmp::Ordering::Greater)
+                });
+
+                if let Some(lb) = lb {
+                    lb.left_bound()
+                } else {
+                    0.0
+                }
+            }
+        }
+    }
+
+    fn right_bound(&self) -> f64 {
+        match self {
+            Objects::Arc(arc) => arc.right_bound(),
+            Objects::Ellipse(ellipse) => ellipse.right_bound(),
+            Objects::Polygon(polygon) => polygon.right_bound(),
+            Objects::DynamicText(dynamic_text) => dynamic_text.right_bound(),
+            Objects::Text(text) => text.right_bound(),
+            Objects::Line(line) => line.right_bound(),
+            Objects::Block(vec) => {
+                let rb = vec.iter().max_by(|ob1, ob2| {
+                    ob1.right_bound()
+                        .partial_cmp(&ob2.right_bound())
+                        .unwrap_or(std::cmp::Ordering::Less)
+                });
+
+                if let Some(rb) = rb {
+                    rb.right_bound()
+                } else {
+                    0.0
+                }
+            }
+        }
+    }
+
+    fn top_bound(&self) -> f64 {
+        match self {
+            Objects::Arc(arc) => arc.top_bound(),
+            Objects::Ellipse(ellipse) => ellipse.top_bound(),
+            Objects::Polygon(polygon) => polygon.top_bound(),
+            Objects::DynamicText(dynamic_text) => dynamic_text.top_bound(),
+            Objects::Text(text) => text.top_bound(),
+            Objects::Line(line) => line.top_bound(),
+            Objects::Block(vec) => {
+                let tb = vec.iter().min_by(|ob1, ob2| {
+                    ob1.top_bound()
+                        .partial_cmp(&ob2.top_bound())
+                        .unwrap_or(std::cmp::Ordering::Greater)
+                });
+
+                if let Some(tb) = tb {
+                    tb.top_bound()
+                } else {
+                    0.0
+                }
+            }
+        }
+    }
+
+    fn bot_bound(&self) -> f64 {
+        match self {
+            Objects::Arc(arc) => arc.bot_bound(),
+            Objects::Ellipse(ellipse) => ellipse.bot_bound(),
+            Objects::Polygon(polygon) => polygon.bot_bound(),
+            Objects::DynamicText(dynamic_text) => dynamic_text.bot_bound(),
+            Objects::Text(text) => text.bot_bound(),
+            Objects::Line(line) => line.bot_bound(),
+            Objects::Block(vec) => {
+                let bb = vec.iter().max_by(|ob1, ob2| {
+                    ob1.bot_bound()
+                        .partial_cmp(&ob2.bot_bound())
+                        .unwrap_or(std::cmp::Ordering::Less)
+                });
+
+                if let Some(bb) = bb {
+                    bb.bot_bound()
+                } else {
+                    0.0
+                }
+            }
         }
     }
 }
@@ -495,6 +626,62 @@ impl ScaleEntity for Description {
         self.objects
             .iter_mut()
             .for_each(|ob| ob.scale(fact_x, fact_y));
+    }
+
+    fn left_bound(&self) -> f64 {
+        let lb = self.objects.iter().min_by(|ob1, ob2| {
+            ob1.left_bound()
+                .partial_cmp(&ob2.left_bound())
+                .unwrap_or(std::cmp::Ordering::Greater)
+        });
+
+        if let Some(lb) = lb {
+            lb.left_bound()
+        } else {
+            0.0
+        }
+    }
+
+    fn right_bound(&self) -> f64 {
+        let rb = self.objects.iter().max_by(|ob1, ob2| {
+            ob1.right_bound()
+                .partial_cmp(&ob2.right_bound())
+                .unwrap_or(std::cmp::Ordering::Less)
+        });
+
+        if let Some(rb) = rb {
+            rb.left_bound()
+        } else {
+            0.0
+        }
+    }
+
+    fn top_bound(&self) -> f64 {
+        let tb = self.objects.iter().min_by(|ob1, ob2| {
+            ob1.top_bound()
+                .partial_cmp(&ob2.top_bound())
+                .unwrap_or(std::cmp::Ordering::Greater)
+        });
+
+        if let Some(tb) = tb {
+            tb.top_bound()
+        } else {
+            0.0
+        }
+    }
+
+    fn bot_bound(&self) -> f64 {
+        let bb = self.objects.iter().max_by(|ob1, ob2| {
+            ob1.bot_bound()
+                .partial_cmp(&ob2.bot_bound())
+                .unwrap_or(std::cmp::Ordering::Less)
+        });
+
+        if let Some(bb) = bb {
+            bb.top_bound()
+        } else {
+            0.0
+        }
     }
 }
 
@@ -797,4 +984,163 @@ pub struct ElemInfo {
 #[inline]
 pub fn two_dec(num: f64) -> f64 {
     (num * 100.0).round() / 100.0
+}
+
+//Should be the relevant Qt5 Code for the font strng in Qt5...
+//Migth need to look it up for Qt6, since it appears to have changed
+//and add in support for either or?
+
+/*https://codebrowser.dev/qt5/qtbase/src/gui/text/qfont.cpp.html
+/*!
+    Returns a description of the font. The description is a
+    comma-separated list of the attributes, perfectly suited for use
+    in QSettings, and consists of the following:
+    \list
+      \li Font family
+      \li Point size
+      \li Pixel size
+      \li Style hint
+      \li Font weight
+      \li Font style
+      \li Underline
+      \li Strike out
+      \li Fixed pitch
+      \li Always \e{0}
+      \li Capitalization
+      \li Letter spacing
+      \li Word spacing
+      \li Stretch
+      \li Style strategy
+      \li Font style (omitted when unavailable)
+    \endlist
+    \sa fromString()
+ */
+QString QFont::toString() const
+{
+    const QChar comma(QLatin1Char(','));
+    QString fontDescription = family() + comma +
+        QString::number(     pointSizeF()) + comma +
+        QString::number(      pixelSize()) + comma +
+        QString::number((int) styleHint()) + comma +
+        QString::number(         weight()) + comma +
+        QString::number((int)     style()) + comma +
+        QString::number((int) underline()) + comma +
+        QString::number((int) strikeOut()) + comma +
+        QString::number((int)fixedPitch()) + comma +
+        QString::number((int)   false);
+    QString fontStyle = styleName();
+    if (!fontStyle.isEmpty())
+        fontDescription += comma + fontStyle;
+    return fontDescription;
+}
+    */
+
+#[derive(Debug)]
+enum FontStyleHint {
+    Helvetica,
+    Times,
+    Courier,
+    OldEnglish,
+    System,
+    AnyStyle,
+    Cursive,
+    Monospace,
+    Fantasy,
+}
+
+/*impl FontStyleHint {
+    pub const SansSerif: FontStyleHint = FontStyleHint::Helvetica;
+    pub const Serif: FontStyleHint = FontStyleHint::Times;
+    pub const TypeWriter: FontStyleHint = FontStyleHint::Courier;
+    pub const Decorative: FontStyleHint = FontStyleHint::OldEnglish;
+}
+*/
+
+impl Into<i32> for &FontStyleHint {
+    fn into(self) -> i32 {
+        match self {
+            FontStyleHint::Helvetica => 0,
+            FontStyleHint::Times => 1,
+            FontStyleHint::Courier => 2,
+            FontStyleHint::OldEnglish => 3,
+            FontStyleHint::System => 4,
+            FontStyleHint::AnyStyle => 5,
+            FontStyleHint::Cursive => 6,
+            FontStyleHint::Monospace => 7,
+            FontStyleHint::Fantasy => 8,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum FontStyle {
+    StyleNormal,
+    StyleItalic,
+    StyleOblique,
+}
+
+impl Into<i32> for &FontStyle {
+    fn into(self) -> i32 {
+        match self {
+            FontStyle::StyleNormal => 0,
+            FontStyle::StyleItalic => 1,
+            FontStyle::StyleOblique => 2,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct FontInfo {
+    family: String,
+    point_size: f64,
+    pixel_size: i32,
+    style_hint: FontStyleHint,
+    weight: i32,
+    style: FontStyle,
+    underline: bool,
+    strike_out: bool,
+    fixed_pitch: bool,
+    style_name: Option<String>,
+}
+
+impl Default for FontInfo {
+    fn default() -> Self {
+        //Might want to revisit these defaults
+        //but I'll put something in for now
+        Self {
+            family: "Arial Narrow".into(),
+            point_size: 12.0,
+            pixel_size: Default::default(),
+            style_hint: FontStyleHint::Helvetica,
+            weight: Default::default(),
+            style: FontStyle::StyleNormal,
+            underline: false,
+            strike_out: false,
+            fixed_pitch: false,
+            style_name: Default::default(),
+        }
+    }
+}
+
+impl Display for FontInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{},{},{},{},{},{},{},{},{},0{}",
+            self.family,
+            self.point_size,
+            self.pixel_size,
+            Into::<i32>::into(&self.style_hint),
+            self.weight,
+            Into::<i32>::into(&self.style),
+            if self.underline { 1 } else { 0 },
+            if self.strike_out { 1 } else { 0 },
+            if self.fixed_pitch { 1 } else { 0 },
+            if let Some(sn) = &self.style_name {
+                format!(",{sn}")
+            } else {
+                "".to_owned()
+            },
+        )
+    }
 }
