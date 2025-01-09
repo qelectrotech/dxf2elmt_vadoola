@@ -1,4 +1,5 @@
 use dxf::enums::Units;
+use rayon::iter::plumbing::bridge;
 use simple_xml_builder::XMLElement;
 //use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -40,10 +41,10 @@ enum Either<L, R> {
 #[derive(Debug)]
 pub struct Definition {
     r#type: ItemType,
-    width: f64,
-    height: f64,
-    hotspot_x: f64,
-    hotspot_y: f64,
+    width: i64,
+    height: i64,
+    hotspot_x: i64,
+    hotspot_y: i64,
     version: String,
     link_type: LinkType,
     uuid: ElmtUuid,
@@ -153,21 +154,44 @@ impl Definition {
             description
         };
 
-        /*let width = ((drw.header.maximum_drawing_extents.x - drw.header.minimum_drawing_extents.x)
-        * scale_factor)
-        .round();*/
-        let width = description.right_bound() - description.left_bound();
+        //The below calculation for width and hotspot_x are taken from the qet source code
+        let (width, hotspot_x) = {
+            let tmp_width = description.right_bound() - description.left_bound();
+            let int_width = tmp_width.round() as i64;
+            let upwidth = ((int_width / 10) * 10) + 10;
+            let xmargin = (upwidth as f64 - tmp_width).round();
+
+            let width = if int_width % 10 > 6 {
+                upwidth + 10
+            } else {
+                upwidth
+            };
+
+            (width, -((description.left_bound() - (xmargin / 2.0)).round() as i64))
+        };
+
+        //The below calculation for height and hotspot_y are taken from the qet source code
+        let (height, hotspot_y) = {
+            let tmp_height = description.bot_bound() - description.top_bound();
+            let int_height = tmp_height.round() as i64;
+            let upheight = ((int_height / 10) * 10) + 10;
+            let ymargin = (upheight as f64 - tmp_height).round();
+
+            let height = if int_height % 10 > 6 {
+                upheight + 10
+            } else {
+                upheight
+            };
+
+            (height, -((description.top_bound() - (ymargin / 2.0)).round() as i64))
+        };
+
         Definition {
             r#type: ItemType::Element,
             width,
-            /*height: ((drw.header.maximum_drawing_extents.y - drw.header.minimum_drawing_extents.y)
-            * scale_factor)
-            .round(),*/
-            height: description.bot_bound() - description.top_bound(),
-            //need to go look up in QET source, exactly how the hot spot is calculated, but at the moment this seems to be somewhat accrurate..probably no worse than
-            //the hard coded, 5, 5
-            hotspot_x: width,
-            hotspot_y: 0.0,
+            height,
+            hotspot_x,
+            hotspot_y,
             version: "0.8.0".into(),
             link_type: LinkType::Simple,
             uuid: Uuid::new_v4().into(),
@@ -179,34 +203,9 @@ impl Definition {
             },
             element_infos: None,
             informations: Some("Created using dxf2elmt!".into()),
-            //description: (drw, spline_step).into(),
             description,
         }
     }
-
-    //for the hotspot code
-    //elements.cpp from QET_ElementScaler line 50
-    /*
-       void DefinitionLine::ReCalc(RectMinMax XYMinMax) {
-       // size and hotspots have to be re-calculated after scaling!
-           int w = (int)round(XYMinMax.width());
-           int h = (int)round(XYMinMax.height());
-
-           // calculation taken from QET-sources:
-           int upwidth = ((w/10)*10)+10;
-           if ((w%10) > 6) upwidth+=10;
-           int upheight = ((h/10)*10)+10;
-           if ((h%10) > 6) upheight+=10;
-           int xmargin = upwidth - w;
-           int ymargin = upheight - h;
-
-           // copy values to internal variables
-           width = upwidth;
-           height = upheight;
-           hotspot_x = -((int)round(XYMinMax.xmin() - (xmargin/2)));
-           hotspot_y = -((int)round(XYMinMax.ymin() - (ymargin/2)));
-       }
-    */
 
     fn scale_factor(unit: Units) -> f64 {
         //I'm not entirely sure this is the best way to determine how to scale the images.
