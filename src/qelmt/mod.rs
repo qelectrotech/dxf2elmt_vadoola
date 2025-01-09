@@ -208,47 +208,41 @@ impl Definition {
     }
 
     fn scale_factor(unit: Units) -> f64 {
-        //I'm not entirely sure this is the best way to determine how to scale the images.
-        //but I need to convert from real world units to pixels some how, and Assuming an A4 Paper
-        //makes sense....Another option would be assume a 96dpi monitor...but 700px8.2677165354 inches,
-        //actually gives 84.6666 dpi...so it's not far off. So for now unless I come up with something better
-        //Below is how I will determine scaling based on the dxf.
-        //If based on an A4 sheet of paper for the default QET Template, that's
-        //8 rows at 80px high = 640px, plus a 60px title block, that's a height of 700px
-        //an A4 sheet of paper is 210mm high in landscape mode -> 700px / 210mm = 3⅓ px/mm
-        //so I should scale the values in the drawing by 3⅓ if the drawing is in mm
-        //conversion table for other units is below
-
+        //so per discussion at https://qelectrotech.org/forum/viewtopic.php?pid=20685#p20685
+        //we are in agreement to scale things to 1mm = 2px;
+        //all the below values are the converted equivalent of 2px per 1mm in the designated unit
         //unit conversions taken from: https://www.unitconverters.net/length-converter.html
-
-        700.0
-            / match unit {
-                //Units::Unitless => 700.0, //if the drawing is unitless just assume it's in pixels, so we want to return 1.0 from the funciton
-                Units::Unitless => 7.291_666_666_666_667, //actually if it's unitless should I assume a conversion of 96dpi? ..so 700/7.291666666666667 = 96
-                Units::Inches => 8.267_716_535_4, //8.2677165354 is the Height (in landscape) of an A4 sheet of paper in inches
-                Units::Feet => 0.688_976_378, //0.688976378 is the Height (in landscape) of an A4 sheet of paper in feet
-                Units::Miles => 0.000_130_488, //0.000130488 is the Height (in landscape) of an A4 sheet of paper in miles
-                Units::Millimeters => 210.0, //210 is the Height (in landscape) of an A4 sheet of paper in mm
-                Units::Centimeters => 21.0, //21 is the Height (in landscape) of an A4 sheet of paper in cm
-                Units::Meters => 0.21, //0.21 is the Height (in landscape) of an A4 sheet of paper in m
-                Units::Kilometers => 0.00021, //0.00021 is the Height (in landscape) of an A4 sheet of paper in km
-                Units::Microinches => todo!(),
-                Units::Mils => todo!(),
-                Units::Yards => 0.229_658_792_7, //0.2296587927 is the Height (in landscape) of an A4 sheet of paper in yards
-                Units::Angstroms => 2.1e9, //2.1e9 is the Height (in landscape) of an A4 sheet of paper in angstroms
-                Units::Nanometers => 2.1e8, //2.1e8 is the Height (in landscape) of an A4 sheet of paper in nanometers
-                Units::Microns => 210_000.0, //210000 is the Height (in landscape) of an A4 sheet of paper in micron / micrometer
-                Units::Decimeters => 2.1, //2.1 is the Height (in landscape) of an A4 sheet of paper in decimeter
-                Units::Decameters => 0.021, //0.021 is the Height (in landscape) of an A4 sheet of paper in decameter
-                Units::Hectometers => 0.0021, //0.0021 is the Height (in landscape) of an A4 sheet of paper in hectometer
-                Units::Gigameters => 2.1e-10, //2.1e-10 is the Height (in landscape) of an A4 sheet of paper in gigameters
-                Units::AstronomicalUnits => 1.403763295e-12, //1.403763295E-12 is the Height (in landscape) of an A4 sheet of paper in AU
-                Units::LightYears => 2.219701751e-17, //2.219701751E-17 is the Height (in landscape) of an A4 sheet of paper in lightyears
-                Units::Parsecs => 6.805636508e-18, //6.805636508E-18 is the Height (in landscape) of an A4 sheet of paper in parsecs
-                Units::USSurveyFeet => todo!(),
-                Units::USSurveyInch => todo!(),
-                Units::USSurveyYard => todo!(),
-                Units::USSurveyMile => todo!(),
+        match unit {
+                Units::Unitless => 1.0, //for now if the drawing is untiless don't scale it
+                Units::Inches => 50.8,
+                Units::Feet => 609.6,
+                Units::Miles | Units::USSurveyMile => 3_218_694.437_4,
+                Units::Millimeters => 2.0,
+                Units::Centimeters => 20.0,
+                Units::Meters => 2_000.0,
+                Units::Kilometers => 2_000_000.0,
+                Units::Microinches => 50.8E-6,
+                Units::Mils => 0.0508,
+                Units::Yards => 1_828.8,
+                Units::Angstroms => 2.0E-7,
+                Units::Nanometers => 2.0e-6,
+                Units::Microns => 0.002,
+                Units::Decimeters => 200.0,
+                Units::Decameters => 20_000.0,
+                Units::Hectometers => 200_000.0,
+                Units::Gigameters => 2.0e12,
+                Units::AstronomicalUnits => 299_195_741_382_000.0,
+                Units::LightYears => 18_921_460_945_160_086_000.0,
+                Units::Parsecs => 61_713_551_625_599_170_000.0,
+                Units::USSurveyFeet => 609.601_219_2,
+                Units::USSurveyInch => 50.800_101_6,
+                
+                //I'm finding very little references to US Survey yard at all. The only real
+                //link I could find was on the Wikipedia page for the Yard, which stated:
+                //"The US survey yard is very slightly longer." and linked to the US Survey Foot page
+                //I'll assume for now that 1 US Survey Yard is equal to 3 US Survey Feet. Which seems
+                //like a reasonable assumption, and would result in something slightly larger than a yard
+                Units::USSurveyYard => 1_828.803_657_6,
             }
     }
 }
