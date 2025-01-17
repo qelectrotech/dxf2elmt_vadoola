@@ -1,10 +1,7 @@
 use dxf::enums::Units;
-use rayon::iter::plumbing::bridge;
+use dynamictext::DTextBuilder;
 use simple_xml_builder::XMLElement;
-//use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-//use std::str::FromStr;
-//use strum::EnumString;
 use dxf::entities::{Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
 use dxf::Drawing;
@@ -393,13 +390,37 @@ impl ScaleEntity for Objects {
     }
 }
 
-impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
-    type Error = &'static str; //add better error later
+pub struct ObjectsBuilder<'a> {
+    ent: &'a Entity,//probably need a lifetime here
+    spline_step: u32,
+    txt_sc_factor: f64,
+    offset_x: Option<f64>,
+    offset_y: Option<f64>,
+}
 
-    fn try_from(
-        (ent, spline_step, offset_x, offset_y): (&Entity, u32, f64, f64),
-    ) -> Result<Self, Self::Error> {
-        match &ent.specific {
+impl<'a> ObjectsBuilder<'a> {
+    pub fn new(ent: &'a Entity, spline_step: u32, txt_sc_factor: f64) -> Self {
+        Self {
+            ent,
+            spline_step,
+            txt_sc_factor,
+            offset_x: None,
+            offset_y: None,
+        }
+    }
+
+    pub fn offsets(self, offset_x: f64, offset_y: f64)  -> Self {
+        Self {
+            offset_x: Some(offset_x),
+            offset_y: Some(offset_y),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> Result<Objects, &'static str /*add better error later*/> {
+        let offset_x = self.offset_x.unwrap_or(0.0);
+        let offset_y = self.offset_y.unwrap_or(0.0);
+        match &self.ent.specific {
             EntityType::Circle(ref circle) => {
                 let mut ellipse: Ellipse = circle.into();
                 ellipse.x += offset_x;
@@ -424,7 +445,7 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 Ok(Objects::Arc(arc))
             }
             EntityType::Spline(ref spline) => {
-                let mut poly: Polygon = (spline, spline_step).into();
+                let mut poly: Polygon = (spline, self.spline_step).into();
 
                 match poly.coordinates.len() {
                     0 | 1 => Err("Error removing empty Spline"),
@@ -451,15 +472,17 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                     if false {
                         //how best to pass in the flag for dynamic text or not....should the flag also default to true?
                         let mut text: Text =
-                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                            (text, HexColor::from_u32(self.ent.common.color_24_bit as u32)).into();
                         text.x += offset_x;
                         text.y -= offset_y;
                         Objects::Text(text)
                     } else {
-                        let mut dtext: DynamicText =
-                            (text, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                            let mut dtext = DTextBuilder::from_text(text)
+                            .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
+                            .scaling(self.txt_sc_factor)
+                            .build();
                         dtext.x += offset_x;
-                        dtext.y += offset_y;
+                        dtext.y -= offset_y;
                         Objects::DynamicText(dtext)
                     },
                 )
@@ -487,10 +510,12 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                         Objects::Text(text)*/
                         todo!();
                     } else {
-                        let mut dtext: DynamicText =
-                            (mtext, HexColor::from_u32(ent.common.color_24_bit as u32)).into();
+                        let mut dtext = DTextBuilder::from_mtext(mtext)
+                            .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
+                            .scaling(self.txt_sc_factor)
+                            .build();
                         dtext.x += offset_x;
-                        dtext.y += offset_y;
+                        dtext.y -= offset_y;
                         Objects::DynamicText(dtext)
                     },
                 )
@@ -563,14 +588,6 @@ impl TryFrom<(&Entity, u32, f64, f64)> for Objects {
                 Err("Need to implement the rest of the entity types")
             }
         }
-    }
-}
-
-impl TryFrom<(&Entity, u32)> for Objects {
-    type Error = &'static str; //add better error later
-
-    fn try_from((ent, spline_step): (&Entity, u32)) -> Result<Self, Self::Error> {
-        Objects::try_from((ent, spline_step, 0f64, 0f64))
     }
 }
 
@@ -700,13 +717,7 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
-        /*println!("{:?}", drw.header.alternate_dimensioning_scale_factor);
-        println!("{:?}", drw.header.alternate_dimensioning_units);
-        println!("{:?}", drw.header.default_drawing_units);
-        println!("{:?}", drw.header.drawing_units);
-        println!("{}", drw.header.file_name);
-        println!("{}", drw.header.project_name);
-        println!("{:?}", drw.header.unit_format);*/
+        let txt_scale_fact = text_to_pt_scaling(drw.header.default_drawing_units);
 
         Self {
             objects: drw
@@ -735,13 +746,17 @@ impl From<(&Drawing, u32)> for Description {
                                     .entities
                                     .iter()
                                     .filter_map(|ent| {
-                                        Objects::try_from((ent, spline_step, offset_x, offset_y))
+                                        ObjectsBuilder::new(ent, spline_step, txt_scale_fact)
+                                            .offsets(offset_x, offset_y)
+                                            .build()
                                             .ok()
                                     })
                                     .collect(),
                             ))
                         }
-                        _ => Objects::try_from((ent, spline_step)).ok(),
+                        _ => {
+                            ObjectsBuilder::new(ent, spline_step, txt_scale_fact).build().ok()
+                        },
                     }
                 })
                 .collect(),
@@ -788,7 +803,6 @@ pub struct Name {
 
 #[derive(Debug)]
 pub struct ElmtUuid {
-    //uuid: String,
     uuid: Uuid,
 }
 
@@ -1067,17 +1081,18 @@ impl Into<i32> for &FontStyleHint {
 
 #[derive(Debug)]
 enum FontStyle {
-    StyleNormal,
-    StyleItalic,
-    StyleOblique,
+    Normal,
+    Italic,
+    Oblique,
 }
 
+//wonder if it's worth doing From<> and 1 = italic, 2 = oblique anything else is Normal....
 impl Into<i32> for &FontStyle {
     fn into(self) -> i32 {
         match self {
-            FontStyle::StyleNormal => 0,
-            FontStyle::StyleItalic => 1,
-            FontStyle::StyleOblique => 2,
+            FontStyle::Normal => 0,
+            FontStyle::Italic => 1,
+            FontStyle::Oblique => 2,
         }
     }
 }
@@ -1106,7 +1121,7 @@ impl Default for FontInfo {
             pixel_size: Default::default(),
             style_hint: FontStyleHint::Helvetica,
             weight: Default::default(),
-            style: FontStyle::StyleNormal,
+            style: FontStyle::Normal,
             underline: false,
             strike_out: false,
             fixed_pitch: false,
@@ -1121,7 +1136,7 @@ impl Display for FontInfo {
             f,
             "{},{},{},{},{},{},{},{},{},0{}",
             self.family,
-            self.point_size,
+            self.point_size.round(),
             self.pixel_size,
             Into::<i32>::into(&self.style_hint),
             self.weight,
@@ -1136,4 +1151,49 @@ impl Display for FontInfo {
             },
         )
     }
+}
+
+fn text_to_pt_scaling(unit: Units) -> f64 {
+    //DXF Text size is in real world units (same as drawing units), QET Text size is in points
+    //the contemporary desktop publishing point aka PostScript point was defined as 72 points to 1 inch.
+    //aka 1 point = 1/72 inch or 0.352778mm
+    //all the below values are the converted equivalent of 1 point = 1/72 inch in the designated unit
+    //unit conversions taken from: https://www.unitconverters.net/length-converter.html
+    match unit {
+        Units::Unitless => 1.0, //for now if the drawing is untiless don't scale it
+        Units::Inches => 72.0,
+        Units::Feet => 864.0,
+        Units::Miles | Units::USSurveyMile => 4_561_929.123_9,
+        Units::Millimeters => 2.834_645_669_3,
+        Units::Centimeters => 28.346_456_693,
+        Units::Meters => 2_834.645_669_3,
+        Units::Kilometers => 2_834_645.669_3,
+        Units::Microinches => 7.2E-5,
+        Units::Mils => 0.072,
+        Units::Yards => 2_592.0,
+        Units::Angstroms => 2.834_645_669E-7,
+        Units::Nanometers => 2.834_6E-6,
+        Units::Microns => 2.834_645_7E-3,
+        Units::Decimeters => 283.464_566_93,
+        Units::Decameters => 28_346.456_693,
+        Units::Hectometers => 283_464.566_93,
+        Units::Gigameters => 2_834_645_669_291.0,
+        Units::AstronomicalUnits => 424_056_956_289_444.0,
+        Units::LightYears => 26_817_818_662_431_298_000.0,
+        Units::Parsecs => 87_468_025_926_045_020_000.0,
+        Units::USSurveyFeet => 864.001_728,
+        Units::USSurveyInch => 72.000_144,
+        
+        //I'm finding very little references to US Survey yard at all. The only real
+        //link I could find was on the Wikipedia page for the Yard, which stated:
+        //"The US survey yard is very slightly longer." and linked to the US Survey Foot page
+        //I'll assume for now that 1 US Survey Yard is equal to 3 US Survey Feet. Which seems
+        //like a reasonable assumption, and would result in something slightly larger than a yard
+        Units::USSurveyYard => 2_592.005_184,
+    }
+}
+
+enum TextEntity<'a> {
+    Text(&'a dxf::entities::Text),
+    MText(&'a dxf::entities::MText),
 }

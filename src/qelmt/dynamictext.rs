@@ -1,4 +1,4 @@
-use super::{two_dec, FontInfo, ScaleEntity};
+use super::{two_dec, FontInfo, ScaleEntity, TextEntity};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
@@ -23,89 +23,6 @@ pub struct DynamicText {
     text_width: i32,
     keep_visual_rotation: bool,
     color: HexColor,
-}
-
-impl From<(&entities::Text, HexColor)> for DynamicText {
-    fn from((txt, color): (&entities::Text, HexColor)) -> Self {
-        DynamicText {
-            x: txt.location.x,
-            y: -txt.location.y,
-            z: txt.location.z,
-            rotation: if txt.rotation.abs().round() as i64 % 360 != 0 {
-                txt.rotation - 180.0
-            } else {
-                0.0
-            },
-            uuid: Uuid::new_v4(),
-            font: if &txt.text_style_name == "STANDARD" {
-                //"Arial Narrow".into()
-                Default::default()
-            } else {
-                //txt.text_style_name.clone()
-                Default::default()
-            },
-
-            //I don't recall off the top of my head if DXF Supports text alignment...check
-            h_alignment: HAlignment::Center,
-            v_alignment: VAlignment::Center,
-
-            text_from: "UserText".into(),
-            frame: false,
-            text_width: -1, //why is this -1, does that just mean auto calculate?
-            color,
-
-            text: txt.value.clone(),
-            keep_visual_rotation: false,
-            info_name: None,
-        }
-    }
-}
-
-impl From<(&entities::MText, HexColor)> for DynamicText {
-    fn from((txt, color): (&entities::MText, HexColor)) -> Self {
-        /*dbg!(&txt.insertion_point);
-        dbg!(&txt.text);
-        for t in &txt.extended_text {
-            dbg!(t);
-        }*/
-
-        DynamicText {
-            x: txt.insertion_point.x,
-            y: -txt.insertion_point.y,
-            z: txt.insertion_point.z,
-            rotation: if txt.rotation_angle.abs().round() as i64 % 360 != 0 {
-                txt.rotation_angle - 180.0
-            } else {
-                0.0
-            },
-            uuid: Uuid::new_v4(),
-            font: if &txt.text_style_name == "STANDARD" {
-                //"Arial Narrow".into()
-                Default::default()
-            } else {
-                //txt.text_style_name.clone()
-                Default::default()
-            },
-
-            //I don't recall off the top of my head if DXF Supports text alignment...check
-            h_alignment: HAlignment::Center,
-            v_alignment: VAlignment::Center,
-
-            text_from: "UserText".into(),
-            frame: false,
-            text_width: -1, //why is this -1, does that just mean auto calculate?
-            color,
-
-            //There are 2 text fields on MTEXT, .text a String and .extended_text a Vec<String>
-            //Most of the example files I have at the moment are single line MTEXT.
-            //I edited one of them in QCad, and added a few lines. The value came through in the text field
-            //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
-            //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
-            text: txt.text.replace("\\P", "\n"),
-            keep_visual_rotation: false,
-            info_name: None,
-        }
-    }
 }
 
 impl From<&DynamicText> for XMLElement {
@@ -155,8 +72,14 @@ impl ScaleEntity for DynamicText {
         //as origionally done by Antonio. I will have to add some sort of processing
         //of the font string and store it's components to make it easier to manipulate
         //such as scaling of the fonts etc.
+
+
+        //so in at least 1 example piece of text after fixing my offsets on the y-axis
+        //for dtext....I was still off by 10 px to low on the y axis, and ~7 px to far right
+        //on the x-axis....do i have an issue with my x/y/scaling calculations
+        //or could this be some rounding error converting height in mm to height in pt?
         //todo!();
-        //font_size *= factX.min(factY);
+        self.font.point_size *= fact_x.min(fact_y);
     }
 
     fn left_bound(&self) -> f64 {
@@ -164,7 +87,8 @@ impl ScaleEntity for DynamicText {
     }
 
     fn right_bound(&self) -> f64 {
-        todo!()
+        //todo!()
+        1.0
     }
 
     fn top_bound(&self) -> f64 {
@@ -172,6 +96,134 @@ impl ScaleEntity for DynamicText {
     }
 
     fn bot_bound(&self) -> f64 {
-        todo!()
+        //todo!()
+        1.0
+    }
+}
+
+pub struct DTextBuilder<'a> {
+    text: TextEntity<'a>,
+    color: Option<HexColor>,
+    txt_sc_factor: Option<f64>
+}
+
+impl<'a> DTextBuilder<'a> {
+    pub fn from_text(text: &'a entities::Text) -> Self {
+        Self {
+            text: TextEntity::Text(text),
+            color: None,
+            txt_sc_factor: None,
+        }
+    }
+
+    pub fn from_mtext(text: &'a entities::MText) -> Self {
+        Self {
+            text: TextEntity::MText(text),
+            color: None,
+            txt_sc_factor: None,
+        }
+    }
+
+    pub fn color(self, color: HexColor) -> Self {
+        Self {
+            color: Some(color),
+            ..self
+        }
+    }
+
+    pub fn scaling(self, txt_sc_factor: f64) -> Self {
+        Self {
+            txt_sc_factor: Some(txt_sc_factor),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> DynamicText {
+        let (x, y, z, rotation, style_name, text_height, value) = match self.text {
+            TextEntity::Text(txt) => {
+                (
+                    txt.location.x,
+                    -txt.location.y,
+                    txt.location.z,
+                    txt.rotation,
+                    &txt.text_style_name,
+                    txt.text_height,
+                    txt.value.clone(),
+                )
+            }
+            TextEntity::MText(mtxt) => {
+                (
+                    mtxt.insertion_point.x,
+                    -mtxt.insertion_point.y,
+                    mtxt.insertion_point.z,
+                    mtxt.rotation_angle,
+                    &mtxt.text_style_name,
+
+                    //I'm not sure what the proper value is here for Mtext
+                    //becuase I haven't actually finished supporting it.
+                    //I'll put initial text height for now. But i'm not certain
+                    //exactly what this correlates to. There is also vertical_height,
+                    //which I would guess is the total vertical height for all the lines
+                    //it's possible I would need to take the vertical height and divide
+                    //by the number of lines to get the value I need....I'm not sure yet
+                    mtxt.initial_text_height,
+                    
+                    //There are 2 text fields on MTEXT, .text a String and .extended_text a Vec<String>
+                    //Most of the example files I have at the moment are single line MTEXT.
+                    //I edited one of them in QCad, and added a few lines. The value came through in the text field
+                    //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
+                    //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
+                    mtxt.text.replace("\\P", "\n"),
+                )
+            }
+        };
+
+        DynamicText {
+            x,
+            y,
+            z,
+            rotation: if rotation.abs().round() as i64 % 360 != 0 {
+                rotation - 180.0
+            } else {
+                0.0
+            },
+            uuid: Uuid::new_v4(),
+            font: if style_name == "STANDARD" {
+                FontInfo {
+                    point_size: if let Some(tsf) = self.txt_sc_factor {
+                        text_height * tsf
+                    } else {
+                        //if we don't have a scaling factor default to 12pt font
+                        12.0
+                    },
+                    ..Default::default()
+                }
+            } else {
+                //clearly right now this is exactly the same as the main body of the if
+                //I'm jus putting this in for now, to compile while I get he font handling
+                //working correctly
+                FontInfo {
+                    point_size: if let Some(tsf) = self.txt_sc_factor {
+                        text_height * tsf
+                    } else {
+                        //if we don't have a scaling factor default to 12pt font
+                        12.0
+                    },
+                    ..Default::default()
+                }
+            },
+            //I don't recall off the top of my head if DXF Supports text alignment...check
+            h_alignment: HAlignment::Center,
+            v_alignment: VAlignment::Center,
+
+            text_from: "UserText".into(),
+            frame: false,
+            text_width: -1, //why is this -1, does that just mean auto calculate?
+            color: self.color.unwrap_or(HexColor::BLACK),
+
+            text: value,
+            keep_visual_rotation: false,
+            info_name: None,
+        }
     }
 }
