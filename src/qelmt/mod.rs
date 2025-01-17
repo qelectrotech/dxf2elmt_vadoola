@@ -1,15 +1,15 @@
-use dxf::enums::Units;
-use dynamictext::DTextBuilder;
-use simple_xml_builder::XMLElement;
-use uuid::Uuid;
 use dxf::entities::{Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
+use dxf::enums::Units;
 use dxf::Drawing;
+use dynamictext::DTextBuilder;
 use hex_color::HexColor;
 use itertools::Itertools;
+use simple_xml_builder::XMLElement;
 use std::convert::TryFrom;
 use std::f64::consts::PI;
 use std::fmt::Display;
+use uuid::Uuid;
 
 pub mod arc;
 pub use arc::Arc;
@@ -164,7 +164,10 @@ impl Definition {
                 upwidth
             };
 
-            (width, -((description.left_bound() - (xmargin / 2.0)).round() as i64))
+            (
+                width,
+                -((description.left_bound() - (xmargin / 2.0)).round() as i64),
+            )
         };
 
         //The below calculation for height and hotspot_y are taken from the qet source code
@@ -180,7 +183,10 @@ impl Definition {
                 upheight
             };
 
-            (height, -((description.top_bound() - (ymargin / 2.0)).round() as i64))
+            (
+                height,
+                -((description.top_bound() - (ymargin / 2.0)).round() as i64),
+            )
         };
 
         Definition {
@@ -210,37 +216,37 @@ impl Definition {
         //all the below values are the converted equivalent of 2px per 1mm in the designated unit
         //unit conversions taken from: https://www.unitconverters.net/length-converter.html
         match unit {
-                Units::Unitless => 1.0, //for now if the drawing is untiless don't scale it
-                Units::Inches => 50.8,
-                Units::Feet => 609.6,
-                Units::Miles | Units::USSurveyMile => 3_218_694.437_4,
-                Units::Millimeters => 2.0,
-                Units::Centimeters => 20.0,
-                Units::Meters => 2_000.0,
-                Units::Kilometers => 2_000_000.0,
-                Units::Microinches => 50.8E-6,
-                Units::Mils => 0.0508,
-                Units::Yards => 1_828.8,
-                Units::Angstroms => 2.0E-7,
-                Units::Nanometers => 2.0e-6,
-                Units::Microns => 0.002,
-                Units::Decimeters => 200.0,
-                Units::Decameters => 20_000.0,
-                Units::Hectometers => 200_000.0,
-                Units::Gigameters => 2.0e12,
-                Units::AstronomicalUnits => 299_195_741_382_000.0,
-                Units::LightYears => 18_921_460_945_160_086_000.0,
-                Units::Parsecs => 61_713_551_625_599_170_000.0,
-                Units::USSurveyFeet => 609.601_219_2,
-                Units::USSurveyInch => 50.800_101_6,
-                
-                //I'm finding very little references to US Survey yard at all. The only real
-                //link I could find was on the Wikipedia page for the Yard, which stated:
-                //"The US survey yard is very slightly longer." and linked to the US Survey Foot page
-                //I'll assume for now that 1 US Survey Yard is equal to 3 US Survey Feet. Which seems
-                //like a reasonable assumption, and would result in something slightly larger than a yard
-                Units::USSurveyYard => 1_828.803_657_6,
-            }
+            Units::Unitless => 1.0, //for now if the drawing is untiless don't scale it
+            Units::Inches => 50.8,
+            Units::Feet => 609.6,
+            Units::Miles | Units::USSurveyMile => 3_218_694.437_4,
+            Units::Millimeters => 2.0,
+            Units::Centimeters => 20.0,
+            Units::Meters => 2_000.0,
+            Units::Kilometers => 2_000_000.0,
+            Units::Microinches => 50.8E-6,
+            Units::Mils => 0.0508,
+            Units::Yards => 1_828.8,
+            Units::Angstroms => 2.0E-7,
+            Units::Nanometers => 2.0e-6,
+            Units::Microns => 0.002,
+            Units::Decimeters => 200.0,
+            Units::Decameters => 20_000.0,
+            Units::Hectometers => 200_000.0,
+            Units::Gigameters => 2.0e12,
+            Units::AstronomicalUnits => 299_195_741_382_000.0,
+            Units::LightYears => 18_921_460_945_160_086_000.0,
+            Units::Parsecs => 61_713_551_625_599_170_000.0,
+            Units::USSurveyFeet => 609.601_219_2,
+            Units::USSurveyInch => 50.800_101_6,
+
+            //I'm finding very little references to US Survey yard at all. The only real
+            //link I could find was on the Wikipedia page for the Yard, which stated:
+            //"The US survey yard is very slightly longer." and linked to the US Survey Foot page
+            //I'll assume for now that 1 US Survey Yard is equal to 3 US Survey Feet. Which seems
+            //like a reasonable assumption, and would result in something slightly larger than a yard
+            Units::USSurveyYard => 1_828.803_657_6,
+        }
     }
 }
 
@@ -391,7 +397,7 @@ impl ScaleEntity for Objects {
 }
 
 pub struct ObjectsBuilder<'a> {
-    ent: &'a Entity,//probably need a lifetime here
+    ent: &'a Entity, //probably need a lifetime here
     spline_step: u32,
     txt_sc_factor: f64,
     offset_x: Option<f64>,
@@ -409,7 +415,7 @@ impl<'a> ObjectsBuilder<'a> {
         }
     }
 
-    pub fn offsets(self, offset_x: f64, offset_y: f64)  -> Self {
+    pub fn offsets(self, offset_x: f64, offset_y: f64) -> Self {
         Self {
             offset_x: Some(offset_x),
             offset_y: Some(offset_y),
@@ -471,13 +477,16 @@ impl<'a> ObjectsBuilder<'a> {
                     //I might change the default parameter to use Dynamic Text
                     if false {
                         //how best to pass in the flag for dynamic text or not....should the flag also default to true?
-                        let mut text: Text =
-                            (text, HexColor::from_u32(self.ent.common.color_24_bit as u32)).into();
+                        let mut text: Text = (
+                            text,
+                            HexColor::from_u32(self.ent.common.color_24_bit as u32),
+                        )
+                            .into();
                         text.x += offset_x;
                         text.y -= offset_y;
                         Objects::Text(text)
                     } else {
-                            let mut dtext = DTextBuilder::from_text(text)
+                        let mut dtext = DTextBuilder::from_text(text)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .scaling(self.txt_sc_factor)
                             .build();
@@ -754,9 +763,9 @@ impl From<(&Drawing, u32)> for Description {
                                     .collect(),
                             ))
                         }
-                        _ => {
-                            ObjectsBuilder::new(ent, spline_step, txt_scale_fact).build().ok()
-                        },
+                        _ => ObjectsBuilder::new(ent, spline_step, txt_scale_fact)
+                            .build()
+                            .ok(),
                     }
                 })
                 .collect(),
@@ -1183,7 +1192,7 @@ fn text_to_pt_scaling(unit: Units) -> f64 {
         Units::Parsecs => 87_468_025_926_045_020_000.0,
         Units::USSurveyFeet => 864.001_728,
         Units::USSurveyInch => 72.000_144,
-        
+
         //I'm finding very little references to US Survey yard at all. The only real
         //link I could find was on the Wikipedia page for the Yard, which stated:
         //"The US survey yard is very slightly longer." and linked to the US Survey Foot page

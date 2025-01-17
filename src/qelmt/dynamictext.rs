@@ -73,7 +73,6 @@ impl ScaleEntity for DynamicText {
         //of the font string and store it's components to make it easier to manipulate
         //such as scaling of the fonts etc.
 
-
         //so in at least 1 example piece of text after fixing my offsets on the y-axis
         //for dtext....I was still off by 10 px to low on the y axis, and ~7 px to far right
         //on the x-axis....do i have an issue with my x/y/scaling calculations
@@ -104,7 +103,7 @@ impl ScaleEntity for DynamicText {
 pub struct DTextBuilder<'a> {
     text: TextEntity<'a>,
     color: Option<HexColor>,
-    txt_sc_factor: Option<f64>
+    txt_sc_factor: Option<f64>,
 }
 
 impl<'a> DTextBuilder<'a> {
@@ -140,17 +139,15 @@ impl<'a> DTextBuilder<'a> {
 
     pub fn build(self) -> DynamicText {
         let (x, y, z, rotation, style_name, text_height, value) = match self.text {
-            TextEntity::Text(txt) => {
-                (
-                    txt.location.x,
-                    -txt.location.y,
-                    txt.location.z,
-                    txt.rotation,
-                    &txt.text_style_name,
-                    txt.text_height,
-                    txt.value.clone(),
-                )
-            }
+            TextEntity::Text(txt) => (
+                txt.location.x,
+                -txt.location.y,
+                txt.location.z,
+                txt.rotation,
+                &txt.text_style_name,
+                txt.text_height,
+                txt.value.clone(),
+            ),
             TextEntity::MText(mtxt) => {
                 (
                     mtxt.insertion_point.x,
@@ -158,7 +155,6 @@ impl<'a> DTextBuilder<'a> {
                     mtxt.insertion_point.z,
                     mtxt.rotation_angle,
                     &mtxt.text_style_name,
-
                     //I'm not sure what the proper value is here for Mtext
                     //becuase I haven't actually finished supporting it.
                     //I'll put initial text height for now. But i'm not certain
@@ -167,7 +163,6 @@ impl<'a> DTextBuilder<'a> {
                     //it's possible I would need to take the vertical height and divide
                     //by the number of lines to get the value I need....I'm not sure yet
                     mtxt.initial_text_height,
-                    
                     //There are 2 text fields on MTEXT, .text a String and .extended_text a Vec<String>
                     //Most of the example files I have at the moment are single line MTEXT.
                     //I edited one of them in QCad, and added a few lines. The value came through in the text field
