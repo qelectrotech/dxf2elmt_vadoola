@@ -1,7 +1,7 @@
 # dxf2elmt
-dxf2elmt is CLI program which can convert .dxf files into .elmt files. The program supports both ascii and binary .dxf files.
+dxf2elmt is CLI program which can convert .dxf files into [QElectroTech](https://qelectrotech.org/) .elmt files. The program supports both ascii and binary .dxf files.
 
-The goal of this program is to create a fast and accurate conversion tool to be used with [QElectroTech](https://qelectrotech.org/). Compared to QET's own conversion [tool](https://github.com/rdsivd/DXFtoQET-2020), dxf2elmt is over 1000x times faster.
+The goal of this program is to create a fast and accurate conversion tool to be used with [QElectroTech](https://qelectrotech.org/).
 
 ## How to Use
 dxf2elmt requires only one input from the user, the input file.
@@ -12,9 +12,9 @@ For example:
 ./dxf2elmt my_file.dxf
 ```
 
-The .elmt file will be outputted in the same directory as the executable. It will retain the name of the .dxf file.
+The .elmt file will be output into the same directory as the executable. It will retain the name of the .dxf file.
 
-If you wish to forgo outputting a .elmt file, you can use the "-v" argument for verbose output. This will output the contents of the .elmt file to stdout without actually creating the file. For example:
+If you wish to forgo creating an .elmt file, you can use the "-v" argument for verbose output. This will output the contents of the .elmt file to stdout without actually creating the file. For example:
 
 ```bash
 ./dxf2elmt my_file.dxf -v
@@ -40,11 +40,6 @@ If you wish to forgo outputting a .elmt file, you can use the "-v" argument for 
 
 * Better error messages
 * Logging
-
-## Known Issue(s)
-
-* `ParseError(#)`: This occurs due to an improper .dxf file
-    * Current fix: Resave .dxf file using a reliable CAD program in order to correct compliant .dxf file
 
 ## Compiling
 
