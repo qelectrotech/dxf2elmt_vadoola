@@ -53,14 +53,6 @@ impl ScaleEntity for Text {
     fn scale(&mut self, fact_x: f64, fact_y: f64) {
         self.x *= fact_x;
         self.y *= fact_y;
-
-        //right now there is no processing of the font string
-        //the logic for the font string is just statically generating it
-        //as origionally done by Antonio. I will have to add some sort of processing
-        //of the font string and store it's components to make it easier to manipulate
-        //such as scaling of the fonts etc.
-        todo!();
-        //font_size *= factX.min(factY);
     }
 
     fn left_bound(&self) -> f64 {

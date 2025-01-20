@@ -66,19 +66,6 @@ impl ScaleEntity for DynamicText {
     fn scale(&mut self, fact_x: f64, fact_y: f64) {
         self.x *= fact_x;
         self.y *= fact_y;
-
-        //right now there is no processing of the font string
-        //the logic for the font string is just statically generating it
-        //as origionally done by Antonio. I will have to add some sort of processing
-        //of the font string and store it's components to make it easier to manipulate
-        //such as scaling of the fonts etc.
-
-        //so in at least 1 example piece of text after fixing my offsets on the y-axis
-        //for dtext....I was still off by 10 px to low on the y axis, and ~7 px to far right
-        //on the x-axis....do i have an issue with my x/y/scaling calculations
-        //or could this be some rounding error converting height in mm to height in pt?
-        //todo!();
-        self.font.point_size *= fact_x.min(fact_y);
     }
 
     fn left_bound(&self) -> f64 {
@@ -173,6 +160,9 @@ impl<'a> DTextBuilder<'a> {
             }
         };
 
+        dbg!(&value);
+        dbg!(&y);
+        dbg!(&self.text);
         DynamicText {
             x,
             y,
