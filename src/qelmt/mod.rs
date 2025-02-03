@@ -144,6 +144,9 @@ impl Circularity for LwPolyline {
 
 impl Definition {
     pub fn new(name: impl Into<String>, spline_step: u32, drw: &Drawing) -> Self {
+        for st in drw.styles() {
+            dbg!(st);
+        }
         let scale_factor = Self::scale_factor(drw.header.default_drawing_units);
         let description = {
             let mut description: Description = (drw, spline_step).into();
@@ -397,19 +400,17 @@ impl ScaleEntity for Objects {
 }
 
 pub struct ObjectsBuilder<'a> {
-    ent: &'a Entity, //probably need a lifetime here
+    ent: &'a Entity,
     spline_step: u32,
-    txt_sc_factor: f64,
     offset_x: Option<f64>,
     offset_y: Option<f64>,
 }
 
 impl<'a> ObjectsBuilder<'a> {
-    pub fn new(ent: &'a Entity, spline_step: u32, txt_sc_factor: f64) -> Self {
+    pub fn new(ent: &'a Entity, spline_step: u32) -> Self {
         Self {
             ent,
             spline_step,
-            txt_sc_factor,
             offset_x: None,
             offset_y: None,
         }
@@ -488,7 +489,6 @@ impl<'a> ObjectsBuilder<'a> {
                     } else {
                         let mut dtext = DTextBuilder::from_text(text)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
-                            .scaling(self.txt_sc_factor)
                             .build();
                         dtext.x += offset_x;
                         dtext.y -= offset_y;
@@ -521,7 +521,6 @@ impl<'a> ObjectsBuilder<'a> {
                     } else {
                         let mut dtext = DTextBuilder::from_mtext(mtext)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
-                            .scaling(self.txt_sc_factor)
                             .build();
                         dtext.x += offset_x;
                         dtext.y -= offset_y;
@@ -726,7 +725,7 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
-        let txt_scale_fact = text_to_pt_scaling(drw.header.default_drawing_units);
+        //let txt_scale_fact = text_to_pt_scaling(drw.header.default_drawing_units);
 
         Self {
             objects: drw
@@ -755,7 +754,7 @@ impl From<(&Drawing, u32)> for Description {
                                     .entities
                                     .iter()
                                     .filter_map(|ent| {
-                                        ObjectsBuilder::new(ent, spline_step, txt_scale_fact)
+                                        ObjectsBuilder::new(ent, spline_step)
                                             .offsets(offset_x, offset_y)
                                             .build()
                                             .ok()
@@ -763,7 +762,7 @@ impl From<(&Drawing, u32)> for Description {
                                     .collect(),
                             ))
                         }
-                        _ => ObjectsBuilder::new(ent, spline_step, txt_scale_fact)
+                        _ => ObjectsBuilder::new(ent, spline_step)
                             .build()
                             .ok(),
                     }
@@ -1162,7 +1161,7 @@ impl Display for FontInfo {
     }
 }
 
-fn text_to_pt_scaling(unit: Units) -> f64 {
+/*fn text_to_pt_scaling(unit: Units) -> f64 {
     //DXF Text size is in real world units (same as drawing units), QET Text size is in points
     //the contemporary desktop publishing point aka PostScript point was defined as 72 points to 1 inch.
     //aka 1 point = 1/72 inch or 0.352778mm
@@ -1200,8 +1199,9 @@ fn text_to_pt_scaling(unit: Units) -> f64 {
         //like a reasonable assumption, and would result in something slightly larger than a yard
         Units::USSurveyYard => 2_592.005_184,
     }
-}
+}*/
 
+#[derive(Debug)]
 enum TextEntity<'a> {
     Text(&'a dxf::entities::Text),
     MText(&'a dxf::entities::MText),

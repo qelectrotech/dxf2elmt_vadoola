@@ -53,6 +53,8 @@ impl ScaleEntity for Text {
     fn scale(&mut self, fact_x: f64, fact_y: f64) {
         self.x *= fact_x;
         self.y *= fact_y;
+        //self.font.pixel_size *= fact_x;
+        self.font.point_size *= fact_x;
     }
 
     fn left_bound(&self) -> f64 {

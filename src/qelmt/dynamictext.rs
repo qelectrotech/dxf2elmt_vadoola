@@ -4,6 +4,12 @@ use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
 
+use parley::{
+    Alignment, FontContext, FontWeight, InlineBox, Layout, LayoutContext, PositionedLayoutItem,
+    StyleProperty,
+};
+
+
 use super::{HAlignment, VAlignment};
 
 #[derive(Debug)]
@@ -66,6 +72,8 @@ impl ScaleEntity for DynamicText {
     fn scale(&mut self, fact_x: f64, fact_y: f64) {
         self.x *= fact_x;
         self.y *= fact_y;
+        //self.font.pixel_size *= fact_x;
+        self.font.point_size *= fact_x;
     }
 
     fn left_bound(&self) -> f64 {
@@ -90,7 +98,6 @@ impl ScaleEntity for DynamicText {
 pub struct DTextBuilder<'a> {
     text: TextEntity<'a>,
     color: Option<HexColor>,
-    txt_sc_factor: Option<f64>,
 }
 
 impl<'a> DTextBuilder<'a> {
@@ -98,7 +105,6 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::Text(text),
             color: None,
-            txt_sc_factor: None,
         }
     }
 
@@ -106,20 +112,12 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::MText(text),
             color: None,
-            txt_sc_factor: None,
         }
     }
 
     pub fn color(self, color: HexColor) -> Self {
         Self {
             color: Some(color),
-            ..self
-        }
-    }
-
-    pub fn scaling(self, txt_sc_factor: f64) -> Self {
-        Self {
-            txt_sc_factor: Some(txt_sc_factor),
             ..self
         }
     }
@@ -160,10 +158,38 @@ impl<'a> DTextBuilder<'a> {
             }
         };
 
+        // Create a FontContext (font database) and LayoutContext (scratch space).
+        // These are both intended to be constructed rarely (perhaps even once per app):
+        /*let mut font_cx = FontContext::new();
+        let mut layout_cx = LayoutContext::new();
+        
+        // Create a `RangedBuilder` or a `TreeBuilder`, which are used to construct a `Layout`.
+        const DISPLAY_SCALE : f32 = 1.0;
+        let mut builder = layout_cx.ranged_builder(&mut font_cx, &value, DISPLAY_SCALE);
+
+        // Set default styles that apply to the entire layout
+        builder.push_default(StyleProperty::LineHeight(1.3));
+        builder.push_default(StyleProperty::FontSize((text_height * self.txt_sc_factor.unwrap()).round() as f32));
+
+        // Build the builder into a Layout
+        let mut layout: Layout<()> = builder.build(&value);
+
+        // Run line-breaking and alignment on the Layout
+        const MAX_WIDTH : Option<f32> = Some(1000.0);
+        layout.break_all_lines(MAX_WIDTH);
+        layout.align(MAX_WIDTH, Alignment::Start);
+
+        let calc_width = layout.width();
+        let calc_height = layout.height();
         dbg!(&value);
+        dbg!(calc_width);
+        dbg!(calc_height);*/
+
+        /*dbg!(&value);
         dbg!(&y);
-        dbg!(&self.text);
+        dbg!(&self.text);*/
         DynamicText {
+            //x: x - (calc_width as f64/2.0),
             x,
             y,
             z,
@@ -175,35 +201,29 @@ impl<'a> DTextBuilder<'a> {
             uuid: Uuid::new_v4(),
             font: if style_name == "STANDARD" {
                 FontInfo {
-                    point_size: if let Some(tsf) = self.txt_sc_factor {
-                        text_height * tsf
-                    } else {
-                        //if we don't have a scaling factor default to 12pt font
-                        12.0
-                    },
+                    point_size: text_height,
                     ..Default::default()
                 }
             } else {
-                //clearly right now this is exactly the same as the main body of the if
+                //clearly right now this is exactly the same as the main body of the if block
                 //I'm jus putting this in for now, to compile while I get he font handling
                 //working correctly
                 FontInfo {
-                    point_size: if let Some(tsf) = self.txt_sc_factor {
-                        text_height * tsf
-                    } else {
-                        //if we don't have a scaling factor default to 12pt font
-                        12.0
-                    },
+                    point_size: text_height,
                     ..Default::default()
                 }
             },
-            //I don't recall off the top of my head if DXF Supports text alignment...check
             h_alignment: HAlignment::Center,
             v_alignment: VAlignment::Center,
 
             text_from: "UserText".into(),
             frame: false,
-            text_width: -1, //why is this -1, does that just mean auto calculate?
+            
+            //why is this -1, does that just mean auto calculate?....no I think antonio just put that in so he wouldn't
+            //have to try and calculate the text width, and let the elemtn editor fix it. I need to calculate it
+            //properly to get alignment correct and such if things aren't using the default top left alignment.
+            //so I need to add in some logic to do this correctly.
+            text_width: -1,
             color: self.color.unwrap_or(HexColor::BLACK),
 
             text: value,
