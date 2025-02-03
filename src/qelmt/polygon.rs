@@ -215,10 +215,10 @@ impl From<&Polygon> for XMLElement {
 }
 
 impl ScaleEntity for Polygon {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+    fn scale(&mut self, fact: f64) {
         self.coordinates.iter_mut().for_each(|coord| {
-            coord.x *= fact_x;
-            coord.y *= fact_y;
+            coord.x *= fact;
+            coord.y *= fact;
         });
     }
 

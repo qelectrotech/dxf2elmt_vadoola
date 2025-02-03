@@ -58,9 +58,7 @@ pub struct Definition {
 //set of functions needed by the objects...but I should probably come up with
 //a better trait name then. For now I'll leave it and just get the code working
 trait ScaleEntity {
-    //honestly would I ever want to scale the x and y by different dimensions?
-    //I'm thinking maybe I just have a single scale factor, it always scales proportiontly
-    fn scale(&mut self, fact_x: f64, fact_y: f64);
+    fn scale(&mut self, fact: f64);
 
     fn left_bound(&self) -> f64;
     fn right_bound(&self) -> f64;
@@ -150,7 +148,7 @@ impl Definition {
         let scale_factor = Self::scale_factor(drw.header.default_drawing_units);
         let description = {
             let mut description: Description = (drw, spline_step).into();
-            description.scale(scale_factor, scale_factor);
+            description.scale(scale_factor);
             description
         };
 
@@ -290,15 +288,15 @@ enum Objects {
 }
 
 impl ScaleEntity for Objects {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+    fn scale(&mut self, fact: f64) {
         match self {
-            Objects::Arc(arc) => arc.scale(fact_x, fact_y),
-            Objects::Ellipse(ellipse) => ellipse.scale(fact_x, fact_y),
-            Objects::Polygon(polygon) => polygon.scale(fact_x, fact_y),
-            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact_x, fact_y),
-            Objects::Text(text) => text.scale(fact_x, fact_y),
-            Objects::Line(line) => line.scale(fact_x, fact_y),
-            Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
+            Objects::Arc(arc) => arc.scale(fact),
+            Objects::Ellipse(ellipse) => ellipse.scale(fact),
+            Objects::Polygon(polygon) => polygon.scale(fact),
+            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact),
+            Objects::Text(text) => text.scale(fact),
+            Objects::Line(line) => line.scale(fact),
+            Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact)),
         }
     }
 
@@ -640,10 +638,10 @@ pub struct Description {
 }
 
 impl ScaleEntity for Description {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+    fn scale(&mut self, fact: f64) {
         self.objects
             .iter_mut()
-            .for_each(|ob| ob.scale(fact_x, fact_y));
+            .for_each(|ob| ob.scale(fact));
     }
 
     fn left_bound(&self) -> f64 {
