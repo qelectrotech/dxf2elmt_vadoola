@@ -15,7 +15,7 @@ pub mod arc;
 pub use arc::Arc;
 
 pub mod line;
-pub use line::Line;
+pub use line::{Leader, Line};
 
 pub mod text;
 pub use text::Text;
@@ -142,9 +142,9 @@ impl Circularity for LwPolyline {
 
 impl Definition {
     pub fn new(name: impl Into<String>, spline_step: u32, drw: &Drawing) -> Self {
-        for st in drw.styles() {
+        /*for st in drw.styles() {
             dbg!(st);
-        }
+        }*/
         let scale_factor = Self::scale_factor(drw.header.default_drawing_units);
         let description = {
             let mut description: Description = (drw, spline_step).into();
@@ -426,7 +426,7 @@ impl<'a> ObjectsBuilder<'a> {
         let offset_x = self.offset_x.unwrap_or(0.0);
         let offset_y = self.offset_y.unwrap_or(0.0);
         match &self.ent.specific {
-            EntityType::Circle(ref circle) => {
+            &EntityType::Circle(ref circle) => {
                 let mut ellipse: Ellipse = circle.into();
                 ellipse.x += offset_x;
                 ellipse.y -= offset_y;
@@ -588,6 +588,19 @@ impl<'a> ObjectsBuilder<'a> {
                     cord.y -= offset_y;
                 }
                 Ok(Objects::Polygon(poly))
+            }
+            //need to add support for nested blocks here....
+            EntityType::Leader(ref leader) => {
+                let mut ld : Leader = leader.into();
+
+                Ok(Objects::Block(ld.0.into_iter().map(|mut ln| {
+                    ln.x1 += offset_x;
+                    ln.y1 -= offset_y;
+
+                    ln.x2 += offset_x;
+                    ln.y2 -= offset_y;
+                    Objects::Line(ln)
+                }).collect()))
             }
             _ => {
                 //dbg!(&ent.specific);
@@ -1147,57 +1160,17 @@ impl Display for FontInfo {
             Into::<i32>::into(&self.style_hint),
             self.weight,
             Into::<i32>::into(&self.style),
-            if self.underline { 1 } else { 0 },
-            if self.strike_out { 1 } else { 0 },
-            if self.fixed_pitch { 1 } else { 0 },
+            i32::from(self.underline),
+            i32::from(self.strike_out),
+            i32::from(self.fixed_pitch),
             if let Some(sn) = &self.style_name {
                 format!(",{sn}")
             } else {
-                "".to_owned()
+                String::new()
             },
         )
     }
 }
-
-/*fn text_to_pt_scaling(unit: Units) -> f64 {
-    //DXF Text size is in real world units (same as drawing units), QET Text size is in points
-    //the contemporary desktop publishing point aka PostScript point was defined as 72 points to 1 inch.
-    //aka 1 point = 1/72 inch or 0.352778mm
-    //all the below values are the converted equivalent of 1 point = 1/72 inch in the designated unit
-    //unit conversions taken from: https://www.unitconverters.net/length-converter.html
-    match unit {
-        Units::Unitless => 1.0, //for now if the drawing is untiless don't scale it
-        Units::Inches => 72.0,
-        Units::Feet => 864.0,
-        Units::Miles | Units::USSurveyMile => 4_561_929.123_9,
-        Units::Millimeters => 2.834_645_669_3,
-        Units::Centimeters => 28.346_456_693,
-        Units::Meters => 2_834.645_669_3,
-        Units::Kilometers => 2_834_645.669_3,
-        Units::Microinches => 7.2E-5,
-        Units::Mils => 0.072,
-        Units::Yards => 2_592.0,
-        Units::Angstroms => 2.834_645_669E-7,
-        Units::Nanometers => 2.834_6E-6,
-        Units::Microns => 2.834_645_7E-3,
-        Units::Decimeters => 283.464_566_93,
-        Units::Decameters => 28_346.456_693,
-        Units::Hectometers => 283_464.566_93,
-        Units::Gigameters => 2_834_645_669_291.0,
-        Units::AstronomicalUnits => 424_056_956_289_444.0,
-        Units::LightYears => 26_817_818_662_431_298_000.0,
-        Units::Parsecs => 87_468_025_926_045_020_000.0,
-        Units::USSurveyFeet => 864.001_728,
-        Units::USSurveyInch => 72.000_144,
-
-        //I'm finding very little references to US Survey yard at all. The only real
-        //link I could find was on the Wikipedia page for the Yard, which stated:
-        //"The US survey yard is very slightly longer." and linked to the US Survey Foot page
-        //I'll assume for now that 1 US Survey Yard is equal to 3 US Survey Feet. Which seems
-        //like a reasonable assumption, and would result in something slightly larger than a yard
-        Units::USSurveyYard => 2_592.005_184,
-    }
-}*/
 
 #[derive(Debug)]
 enum TextEntity<'a> {

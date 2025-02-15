@@ -24,11 +24,12 @@
 //      is only ever incremented by 1...why is it inside these functions in the first place.....just return a Result<XMLElement, Err> if it
 //      returns an element increment the count...
 
-/*#![warn(
+#![warn(
     clippy::all,
     clippy::pedantic,
     //clippy::cargo,
-)]*/
+    rust_2024_compatibility,
+)]
 
 extern crate dxf;
 extern crate simple_xml_builder;
