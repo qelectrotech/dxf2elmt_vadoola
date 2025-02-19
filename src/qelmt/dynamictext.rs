@@ -162,7 +162,7 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::Text(text),
             color: None,
-            attach_point: dxf::enums::AttachmentPoint::BottomRight as i32,
+            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
         }
     }
 
@@ -170,7 +170,7 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::MText(text),
             color: None,
-            attach_point: dxf::enums::AttachmentPoint::BottomRight as i32,
+            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
         }
     }
 
@@ -191,7 +191,7 @@ impl<'a> DTextBuilder<'a> {
                 &txt.text_style_name,
                 txt.text_height,
                 txt.value.clone(),
-                dxf::enums::AttachmentPoint::BottomRight as i32, // as Placeholder: no AttachmentPoint with Text!!!
+                dxf::enums::AttachmentPoint::TopLeft as i32, // as Placeholder: no AttachmentPoint with Text!!!
                 0.0, // as Placeholder: no "reference_rectangle_width" with Text!!!
             ),
             TextEntity::MText(mtxt) => (

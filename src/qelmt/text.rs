@@ -34,7 +34,7 @@ impl From<(&entities::Text, HexColor)> for Text {
                 Default::default()
             },
             value: txt.value.clone(),
-            attach_point: dxf::enums::AttachmentPoint::BottomRight as i32,
+            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
 	    reference_rectangle_width: 0.0,
         }
     }
