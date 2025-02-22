@@ -4,10 +4,10 @@ use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use uuid::Uuid;
 
-use parley::{
+/*use parley::{
     Alignment, FontContext, FontWeight, InlineBox, Layout, LayoutContext, PositionedLayoutItem,
     StyleProperty,
-};
+};*/
 
 
 use super::{HAlignment, VAlignment};

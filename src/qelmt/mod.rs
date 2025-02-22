@@ -276,7 +276,7 @@ impl From<&Definition> for XMLElement {
 }
 
 #[derive(Debug)]
-enum Objects {
+pub(crate) enum Objects {
     Arc(Arc),
     Ellipse(Ellipse),
     Polygon(Polygon),
@@ -426,13 +426,13 @@ impl<'a> ObjectsBuilder<'a> {
         let offset_x = self.offset_x.unwrap_or(0.0);
         let offset_y = self.offset_y.unwrap_or(0.0);
         match &self.ent.specific {
-            &EntityType::Circle(ref circle) => {
+            EntityType::Circle(circle) => {
                 let mut ellipse: Ellipse = circle.into();
                 ellipse.x += offset_x;
                 ellipse.y -= offset_y;
                 Ok(Objects::Ellipse(ellipse))
             }
-            EntityType::Line(ref line) => {
+            EntityType::Line(line) => {
                 let mut line: Line = line.into();
                 line.x1 += offset_x;
                 line.y1 -= offset_y;
@@ -442,14 +442,14 @@ impl<'a> ObjectsBuilder<'a> {
 
                 Ok(Objects::Line(line))
             }
-            EntityType::Arc(ref arc) => {
+            EntityType::Arc(arc) => {
                 let mut arc: Arc = arc.into();
                 arc.x += offset_x;
                 arc.y -= offset_y;
 
                 Ok(Objects::Arc(arc))
             }
-            EntityType::Spline(ref spline) => {
+            EntityType::Spline(spline) => {
                 let mut poly: Polygon = (spline, self.spline_step).into();
 
                 match poly.coordinates.len() {
@@ -466,7 +466,7 @@ impl<'a> ObjectsBuilder<'a> {
                     }
                 }
             }
-            EntityType::Text(ref text) => {
+            EntityType::Text(text) => {
                 Ok(
                     //right now the dxf2elmt defaults to making all text Static Text...
                     //it was requested by the QET devs to add in support for Dynamic text
@@ -494,13 +494,13 @@ impl<'a> ObjectsBuilder<'a> {
                     },
                 )
             }
-            EntityType::Ellipse(ref ellipse) => {
+            EntityType::Ellipse(ellipse) => {
                 let mut ellipse: Ellipse = ellipse.into();
                 ellipse.x += offset_x;
                 ellipse.y -= offset_y;
                 Ok(Objects::Ellipse(ellipse))
             }
-            EntityType::MText(ref mtext) => {
+            EntityType::MText(mtext) => {
                 Ok(
                     //right now the dxf2elmt defaults to making all text Static Text...
                     //it was requested by the QET devs to add in support for Dynamic text
@@ -526,7 +526,7 @@ impl<'a> ObjectsBuilder<'a> {
                     },
                 )
             }
-            EntityType::Polyline(ref polyline) => match polyline.__vertices_and_handles.len() {
+            EntityType::Polyline(polyline) => match polyline.__vertices_and_handles.len() {
                 0 | 1 => Err("Error empty Polyline"),
                 2 => {
                     let mut line = Line::try_from(polyline)?;
@@ -553,7 +553,7 @@ impl<'a> ObjectsBuilder<'a> {
                     }
                 }
             },
-            EntityType::LwPolyline(ref lwpolyline) => match lwpolyline.vertices.len() {
+            EntityType::LwPolyline(lwpolyline) => match lwpolyline.vertices.len() {
                 0 | 1 => Err("Error empty LwPolyline"),
                 2 => {
                     let mut line = Line::try_from(lwpolyline)?;
@@ -580,7 +580,7 @@ impl<'a> ObjectsBuilder<'a> {
                     }
                 }
             },
-            EntityType::Solid(ref solid) => {
+            EntityType::Solid(solid) => {
                 let mut poly: Polygon = solid.into();
 
                 for cord in &mut poly.coordinates {
@@ -590,8 +590,8 @@ impl<'a> ObjectsBuilder<'a> {
                 Ok(Objects::Polygon(poly))
             }
             //need to add support for nested blocks here....
-            EntityType::Leader(ref leader) => {
-                let mut ld : Leader = leader.into();
+            EntityType::Leader(leader) => {
+                let ld: Leader = leader.into();
 
                 Ok(Objects::Block(ld.0.into_iter().map(|mut ln| {
                     ln.x1 += offset_x;
@@ -940,13 +940,6 @@ impl Display for LineEnd {
             }
         )
     }
-}
-
-enum TermOrient {
-    North,
-    East,
-    South,
-    West,
 }
 
 #[derive(Debug)]

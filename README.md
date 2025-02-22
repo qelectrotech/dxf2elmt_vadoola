@@ -32,6 +32,8 @@ If you wish to forgo creating an .elmt file, you can use the "-v" argument for v
 * Solids
 * Splines
 * Blocks
+* MText (partial support)
+* Leader
 
 ## To Do
 

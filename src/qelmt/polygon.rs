@@ -1,10 +1,9 @@
 use super::{two_dec, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
-use std::{
-    cmp::min,
-    ops::{Add, Mul},
-};
+use std::
+    ops::{Add, Mul}
+;
 
 //wait Why do I have a coordinate AND a Point struct, that are
 //essentially the same. It's been a couple of months, but I'm not
