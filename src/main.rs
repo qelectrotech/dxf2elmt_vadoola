@@ -33,6 +33,7 @@
 
 extern crate dxf;
 extern crate simple_xml_builder;
+extern crate unicode_segmentation;
 
 use anyhow::{Context, Ok, Result};
 use clap::Parser;
