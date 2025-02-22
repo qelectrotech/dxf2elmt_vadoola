@@ -593,14 +593,18 @@ impl<'a> ObjectsBuilder<'a> {
             EntityType::Leader(leader) => {
                 let ld: Leader = leader.into();
 
-                Ok(Objects::Block(ld.0.into_iter().map(|mut ln| {
-                    ln.x1 += offset_x;
-                    ln.y1 -= offset_y;
+                Ok(Objects::Block(
+                    ld.0.into_iter()
+                        .map(|mut ln| {
+                            ln.x1 += offset_x;
+                            ln.y1 -= offset_y;
 
-                    ln.x2 += offset_x;
-                    ln.y2 -= offset_y;
-                    Objects::Line(ln)
-                }).collect()))
+                            ln.x2 += offset_x;
+                            ln.y2 -= offset_y;
+                            Objects::Line(ln)
+                        })
+                        .collect(),
+                ))
             }
             _ => {
                 //dbg!(&ent.specific);
@@ -652,9 +656,7 @@ pub struct Description {
 
 impl ScaleEntity for Description {
     fn scale(&mut self, fact: f64) {
-        self.objects
-            .iter_mut()
-            .for_each(|ob| ob.scale(fact));
+        self.objects.iter_mut().for_each(|ob| ob.scale(fact));
     }
 
     fn left_bound(&self) -> f64 {
@@ -773,9 +775,7 @@ impl From<(&Drawing, u32)> for Description {
                                     .collect(),
                             ))
                         }
-                        _ => ObjectsBuilder::new(ent, spline_step)
-                            .build()
-                            .ok(),
+                        _ => ObjectsBuilder::new(ent, spline_step).build().ok(),
                     }
                 })
                 .collect(),

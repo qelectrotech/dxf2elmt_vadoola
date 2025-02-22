@@ -9,7 +9,6 @@ use uuid::Uuid;
     StyleProperty,
 };*/
 
-
 use super::{HAlignment, VAlignment};
 
 #[derive(Debug)]
@@ -162,7 +161,7 @@ impl<'a> DTextBuilder<'a> {
         // These are both intended to be constructed rarely (perhaps even once per app):
         /*let mut font_cx = FontContext::new();
         let mut layout_cx = LayoutContext::new();
-        
+
         // Create a `RangedBuilder` or a `TreeBuilder`, which are used to construct a `Layout`.
         const DISPLAY_SCALE : f32 = 1.0;
         let mut builder = layout_cx.ranged_builder(&mut font_cx, &value, DISPLAY_SCALE);
@@ -218,7 +217,7 @@ impl<'a> DTextBuilder<'a> {
 
             text_from: "UserText".into(),
             frame: false,
-            
+
             //why is this -1, does that just mean auto calculate?....no I think antonio just put that in so he wouldn't
             //have to try and calculate the text width, and let the elemtn editor fix it. I need to calculate it
             //properly to get alignment correct and such if things aren't using the default top left alignment.

@@ -112,37 +112,45 @@ impl TryFrom<&LwPolyline> for Line {
 
 impl From<&entities::Leader> for Leader {
     fn from(leader: &entities::Leader) -> Self {
-        Leader(leader.vertices.windows(2).enumerate().map(|(cnt, pt_slice)| {
-            let end1 = if leader.use_arrowheads && cnt == 0 {
-                LineEnd::SimpleArrow
-            } else {
-                LineEnd::None
-            };
-            
-            Line {
-                x1: pt_slice[0].x,
-                y1: -pt_slice[0].y,
-                length1: 1.5, //In order to get the arrow sizing, I need to read in the dimension styling first
-                end1,
-                x2: pt_slice[1].x,
-                y2: -pt_slice[1].y,
-                length2: 1.5, //In order to get the arrow sizing, I need to read in the dimension styling first
-                end2: LineEnd::None,
-    
-                //in the original code antialias is always set to false...I'm guessing for performance
-                //reasons...I'm trying to think if there is a time we might want to turn it on?
-                antialias: false,
-                //looks like line thickenss and color information I *might* need to grab from a dimension style
-                //entity which I haven't implemented yet
-                /*style: if line.thickness > 0.5 {
-                    "line-style:normal;line-weight:normal;filling:none;color:black"
-                } else {
-                    "line-style:normal;line-weight:thin;filling:none;color:black"
-                }
-                .into(),*/
-                style: "line-style:normal;line-weight:normal;filling:none;color:black".into(),
-            }
-        }).collect())
+        Leader(
+            leader
+                .vertices
+                .windows(2)
+                .enumerate()
+                .map(|(cnt, pt_slice)| {
+                    let end1 = if leader.use_arrowheads && cnt == 0 {
+                        LineEnd::SimpleArrow
+                    } else {
+                        LineEnd::None
+                    };
+
+                    Line {
+                        x1: pt_slice[0].x,
+                        y1: -pt_slice[0].y,
+                        length1: 1.5, //In order to get the arrow sizing, I need to read in the dimension styling first
+                        end1,
+                        x2: pt_slice[1].x,
+                        y2: -pt_slice[1].y,
+                        length2: 1.5, //In order to get the arrow sizing, I need to read in the dimension styling first
+                        end2: LineEnd::None,
+
+                        //in the original code antialias is always set to false...I'm guessing for performance
+                        //reasons...I'm trying to think if there is a time we might want to turn it on?
+                        antialias: false,
+                        //looks like line thickenss and color information I *might* need to grab from a dimension style
+                        //entity which I haven't implemented yet
+                        /*style: if line.thickness > 0.5 {
+                            "line-style:normal;line-weight:normal;filling:none;color:black"
+                        } else {
+                            "line-style:normal;line-weight:thin;filling:none;color:black"
+                        }
+                        .into(),*/
+                        style: "line-style:normal;line-weight:normal;filling:none;color:black"
+                            .into(),
+                    }
+                })
+                .collect(),
+        )
     }
 }
 
