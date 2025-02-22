@@ -805,10 +805,10 @@ impl From<&Names> for XMLElement {
     fn from(nme: &Names) -> Self {
         let mut names_elmt = XMLElement::new("names");
         for name in &nme.names {
-            let mut name_elmt = XMLElement::new("name");
-            name_elmt.add_attribute("lang", &name.lang);
-            name_elmt.add_text(&name.value);
-            names_elmt.add_child(name_elmt);
+            let mut nm_elmt = XMLElement::new("name");
+            nm_elmt.add_attribute("lang", &name.lang);
+            nm_elmt.add_text(&name.value);
+            names_elmt.add_child(nm_elmt);
         }
         names_elmt
     }
@@ -839,10 +839,14 @@ impl From<&ElmtUuid> for XMLElement {
     }
 }
 
+//I need to check what these other item types are used for. I think it's unlikely
+//I'll ever need for this tool, so it might be worth just hard coding the "element"
+//string when writing out the XML, but for now I'll just comment out the other enum
+//varients to supress the clippy warnings.
 #[derive(Debug)]
 enum ItemType {
     Element = 1,
-    ElementsCategory = 2,
+    /*ElementsCategory = 2,
     ElementsCollection = 4,
     ElementsContainer = 6,
     ElementsCollectionItem = 7,
@@ -851,7 +855,7 @@ enum ItemType {
     TitleBlockTemplatesCollectionItem = 24,
     Diagram = 32,
     Project = 64,
-    All = 127,
+    All = 127,*/
 }
 
 impl Display for ItemType {
@@ -861,7 +865,7 @@ impl Display for ItemType {
             "{}",
             match self {
                 Self::Element => "element",
-                Self::ElementsCategory | Self::ElementsContainer | Self::ElementsCollectionItem =>
+                /*Self::ElementsCategory | Self::ElementsContainer | Self::ElementsCollectionItem =>
                     "elements category",
                 Self::ElementsCollection => "element",
                 Self::TitleBlockTemplate | Self::TitleBlockTemplatesCollectionItem =>
@@ -869,7 +873,7 @@ impl Display for ItemType {
                 Self::TitleBlockTemplatesCollection => "title block templates collection",
                 Self::Diagram => "diagram",
                 Self::Project => "project",
-                Self::All => "All",
+                Self::All => "All",*/
             }
         )
     }
@@ -921,9 +925,9 @@ impl Display for VAlignment {
 enum LineEnd {
     None,
     SimpleArrow,
-    TriangleArrow,
+    /*TriangleArrow,
     Circle,
-    Diamond,
+    Diamond,*/
 }
 
 impl Display for LineEnd {
@@ -934,9 +938,9 @@ impl Display for LineEnd {
             match self {
                 Self::None => "none",
                 Self::SimpleArrow => "simple",
-                Self::TriangleArrow => "triangle",
+                /*Self::TriangleArrow => "triangle",
                 Self::Circle => "circle",
-                Self::Diamond => "diamond",
+                Self::Diamond => "diamond",*/
             }
         )
     }
@@ -945,12 +949,12 @@ impl Display for LineEnd {
 #[derive(Debug)]
 enum LinkType {
     Simple,
-    Master,
+    /*Master,
     Slave,
     NextReport,
     PrevReport,
     TermBlock,
-    Thumbnail,
+    Thumbnail,*/
 }
 
 impl Display for LinkType {
@@ -960,12 +964,12 @@ impl Display for LinkType {
             "{}",
             match self {
                 Self::Simple => "simple",
-                Self::Master => "master",
+                /*Self::Master => "master",
                 Self::Slave => "slave",
                 Self::NextReport => "next_report",
                 Self::PrevReport => "previous_report",
                 Self::TermBlock => "terminal",
-                Self::Thumbnail => "thumbnail",
+                Self::Thumbnail => "thumbnail",*/
             }
         )
     }
@@ -1057,14 +1061,14 @@ QString QFont::toString() const
 #[derive(Debug)]
 enum FontStyleHint {
     Helvetica,
-    Times,
+    /*Times,
     Courier,
     OldEnglish,
     System,
     AnyStyle,
     Cursive,
     Monospace,
-    Fantasy,
+    Fantasy,*/
 }
 
 /*impl FontStyleHint {
@@ -1079,14 +1083,14 @@ impl Into<i32> for &FontStyleHint {
     fn into(self) -> i32 {
         match self {
             FontStyleHint::Helvetica => 0,
-            FontStyleHint::Times => 1,
+            /*FontStyleHint::Times => 1,
             FontStyleHint::Courier => 2,
             FontStyleHint::OldEnglish => 3,
             FontStyleHint::System => 4,
             FontStyleHint::AnyStyle => 5,
             FontStyleHint::Cursive => 6,
             FontStyleHint::Monospace => 7,
-            FontStyleHint::Fantasy => 8,
+            FontStyleHint::Fantasy => 8,*/
         }
     }
 }
@@ -1094,8 +1098,8 @@ impl Into<i32> for &FontStyleHint {
 #[derive(Debug)]
 enum FontStyle {
     Normal,
-    Italic,
-    Oblique,
+    /*Italic,
+    Oblique,*/
 }
 
 //wonder if it's worth doing From<> and 1 = italic, 2 = oblique anything else is Normal....
@@ -1103,8 +1107,8 @@ impl Into<i32> for &FontStyle {
     fn into(self) -> i32 {
         match self {
             FontStyle::Normal => 0,
-            FontStyle::Italic => 1,
-            FontStyle::Oblique => 2,
+            /*FontStyle::Italic => 1,
+            FontStyle::Oblique => 2,*/
         }
     }
 }
@@ -1130,14 +1134,14 @@ impl Default for FontInfo {
         Self {
             family: "Arial Narrow".into(),
             point_size: 12.0,
-            pixel_size: Default::default(),
+            pixel_size: i32::default(),
             style_hint: FontStyleHint::Helvetica,
-            weight: Default::default(),
+            weight: i32::default(),
             style: FontStyle::Normal,
             underline: false,
             strike_out: false,
             fixed_pitch: false,
-            style_name: Default::default(),
+            style_name: None,
         }
     }
 }

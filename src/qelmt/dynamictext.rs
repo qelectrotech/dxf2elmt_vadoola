@@ -46,9 +46,9 @@ impl From<&DynamicText> for XMLElement {
         //
         // reversed and slightly modified after looking at the result in element-editor:
         //
-        let     _s: f64   = txt.font.point_size;
-        let mut _x: f64   = txt.x + 0.5 - (_s/8.0) - 4.05;
-        let     _y: f64   = txt.y + 0.5 - (7.0/5.0*_s + 26.0/5.0) + _s;
+        let     pt_size: f64   = txt.font.point_size;
+        let mut x_pos: f64   = txt.x + 0.5 - (pt_size/8.0) - 4.05;
+        let     y_pos: f64   = txt.y + 0.5 - (7.0/5.0*pt_size + 26.0/5.0) + pt_size;
         //
         // we need the horizontal alignment and the text-width to move to right x-position:
         // txt.reference_rectangle_width, // should be text-width (Group code 41)
@@ -57,19 +57,19 @@ impl From<&DynamicText> for XMLElement {
         //                        // 4 = Middle left; 5 = Middle center; 6 = Middle right
         //                        // 7 = Bottom left; 8 = Bottom center; 9 = Bottom right
         //
-        let mut _h_alignment: HAlignment = HAlignment::Left;
+        let mut h_alignment: HAlignment = HAlignment::Left;
         let mut _v_alignment: VAlignment = VAlignment::Top;
         match txt.attachment_point {
-              1|4|7 => _h_alignment = HAlignment::Left,
-              2|5|8 => _h_alignment = HAlignment::Center,
-              3|6|9 => _h_alignment = HAlignment::Right,
-              _     => (),
+            1|4|7 => h_alignment = HAlignment::Left,
+            2|5|8 => h_alignment = HAlignment::Center,
+            3|6|9 => h_alignment = HAlignment::Right,
+            _     => (),
         };
         match txt.attachment_point {
-              1|2|3 => _v_alignment = VAlignment::Top,
-              4|5|6 => _v_alignment = VAlignment::Center,
-              7|8|9 => _v_alignment = VAlignment::Bottom,
-              _     => (),
+            1..=3 => _v_alignment = VAlignment::Top,
+            4..=6 => _v_alignment = VAlignment::Center,
+            7..=9 => _v_alignment = VAlignment::Bottom,
+            _     => (),
         };
         //
         // it's just annoying if the value for "reference_rectangle_width" in the dxf is “0.0”...
@@ -77,20 +77,20 @@ impl From<&DynamicText> for XMLElement {
         // o.k. ... as long as we do not know the real width:
         // "guess" the width by number of characters and font-size:
         //
-        let     _n: usize = txt.text.graphemes(true).count();
-        let mut _w = (_n  as f64) * _s * 0.75;
+        let     graphene_count: usize = txt.text.graphemes(true).count();
+        let mut txt_width = (graphene_count  as f64) * pt_size * 0.75;
         if txt.reference_rectangle_width > 2.0 {
-            _w = txt.reference_rectangle_width;
+            txt_width = txt.reference_rectangle_width;
         }
 
-        match _h_alignment {
-            HAlignment::Left   => _x -=  0.0,
-            HAlignment::Center => _x -= _w / 2.0,
-            HAlignment::Right  => _x -= _w,
+        match h_alignment {
+            HAlignment::Left   => x_pos -=  0.0,
+            HAlignment::Center => x_pos -= txt_width / 2.0,
+            HAlignment::Right  => x_pos -= txt_width,
         };
 
-        dtxt_xml.add_attribute("x", two_dec(_x));
-        dtxt_xml.add_attribute("y", two_dec(_y));
+        dtxt_xml.add_attribute("x", two_dec(x_pos));
+        dtxt_xml.add_attribute("y", two_dec(y_pos));
         dtxt_xml.add_attribute("z", two_dec(txt.z));
         dtxt_xml.add_attribute("rotation", two_dec(txt.rotation));
         dtxt_xml.add_attribute("uuid", format!("{{{}}}", txt.uuid));
@@ -273,8 +273,8 @@ impl<'a> DTextBuilder<'a> {
                     ..Default::default()
                 }
             },
-            attachment_point: attachment_point as i32, //liest aus der dxf-Datei!!!
-            reference_rectangle_width: reference_rectangle_width, //liest aus der dxf-Datei!!!
+            attachment_point, //liest aus der dxf-Datei!!!
+            reference_rectangle_width, //liest aus der dxf-Datei!!!
             h_alignment: HAlignment::Left,
             v_alignment: VAlignment::Top,
             text_from: "UserText".into(),

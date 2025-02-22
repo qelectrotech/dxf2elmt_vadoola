@@ -28,10 +28,10 @@ impl From<(&entities::Text, HexColor)> for Text {
             color,
             font: if &txt.text_style_name == "STANDARD" {
                 //"Arial Narrow".into()
-                Default::default()
+                FontInfo::default()
             } else {
                 //txt.text_style_name.clone()
-                Default::default()
+                FontInfo::default()
             },
             value: txt.value.clone(),
             attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
