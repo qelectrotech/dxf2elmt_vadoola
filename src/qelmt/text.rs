@@ -11,6 +11,8 @@ pub struct Text {
     pub y: f64,
     font: FontInfo,
     color: HexColor,
+    attach_point: i32,
+    reference_rectangle_width: f64,
 }
 
 impl From<(&entities::Text, HexColor)> for Text {
@@ -32,6 +34,8 @@ impl From<(&entities::Text, HexColor)> for Text {
                 Default::default()
             },
             value: txt.value.clone(),
+            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
+	    reference_rectangle_width: 0.0,
         }
     }
 }

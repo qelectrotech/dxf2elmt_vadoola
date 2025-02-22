@@ -29,6 +29,7 @@ rayon = "1.10.0"
 hex_color = "3.0.0"
 itertools = "0.14"
 parley = "0.2.0"
+unicode-segmentation = "1.12.0"
 
 #[lints.clippy]
 #unwrap_used = "deny"
