@@ -1,6 +1,6 @@
 use dxf::entities::{Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
-use dxf::enums::Units;
+use dxf::enums::{AttachmentPoint, HorizontalTextJustification, Units, VerticalTextJustification};
 use dxf::Drawing;
 use dynamictext::DTextBuilder;
 use hex_color::HexColor;
@@ -900,6 +900,37 @@ impl Display for HAlignment {
     }
 }
 
+impl From<AttachmentPoint> for HAlignment {
+    fn from(value: AttachmentPoint) -> Self {
+        match value {
+            AttachmentPoint::TopLeft
+            | AttachmentPoint::MiddleLeft
+            | AttachmentPoint::BottomLeft => HAlignment::Left,
+            AttachmentPoint::TopCenter
+            | AttachmentPoint::MiddleCenter
+            | AttachmentPoint::BottomCenter => HAlignment::Center,
+            AttachmentPoint::TopRight
+            | AttachmentPoint::MiddleRight
+            | AttachmentPoint::BottomRight => HAlignment::Right,
+        }
+    }
+}
+
+impl From<HorizontalTextJustification> for HAlignment {
+    fn from(value: HorizontalTextJustification) -> Self {
+        //https://ezdxf.readthedocs.io/en/stable/tutorials/text.html#tut-text
+        match value {
+            HorizontalTextJustification::Left => HAlignment::Left,
+            HorizontalTextJustification::Center => HAlignment::Center,
+            HorizontalTextJustification::Right => HAlignment::Right,
+
+            //TODO: Handling the Aligned Middle and Fit alignments are a bit more complicated
+            //for now I'll just default if it gets one of those we Alighn Left
+            _ => HAlignment::Left,
+        }
+    }
+}
+
 #[derive(Debug)]
 enum VAlignment {
     Top,
@@ -918,6 +949,35 @@ impl Display for VAlignment {
                 Self::Bottom => "AlignBottom",
             }
         )
+    }
+}
+
+impl From<AttachmentPoint> for VAlignment {
+    fn from(value: AttachmentPoint) -> Self {
+        match value {
+            AttachmentPoint::TopLeft | AttachmentPoint::TopCenter | AttachmentPoint::TopRight => {
+                VAlignment::Top
+            }
+            AttachmentPoint::MiddleLeft
+            | AttachmentPoint::MiddleCenter
+            | AttachmentPoint::MiddleRight => VAlignment::Center,
+            AttachmentPoint::BottomLeft
+            | AttachmentPoint::BottomCenter
+            | AttachmentPoint::BottomRight => VAlignment::Bottom,
+        }
+    }
+}
+
+impl From<VerticalTextJustification> for VAlignment {
+    fn from(value: VerticalTextJustification) -> Self {
+        //https://ezdxf.readthedocs.io/en/stable/tutorials/text.html#tut-text
+        match value {
+            VerticalTextJustification::Top => VAlignment::Top,
+            VerticalTextJustification::Middle => VAlignment::Center,
+            VerticalTextJustification::Baseline | VerticalTextJustification::Bottom => {
+                VAlignment::Bottom
+            }
+        }
     }
 }
 

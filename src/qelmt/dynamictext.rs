@@ -2,9 +2,8 @@ use super::{two_dec, FontInfo, ScaleEntity, TextEntity};
 use dxf::entities;
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
-use uuid::Uuid;
 use unicode_segmentation::UnicodeSegmentation;
-
+use uuid::Uuid;
 
 /*use parley::{
     Alignment, FontContext, FontWeight, InlineBox, Layout, LayoutContext, PositionedLayoutItem,
@@ -30,7 +29,6 @@ pub struct DynamicText {
     text_width: i32,
     keep_visual_rotation: bool,
     color: HexColor,
-    attachment_point: i32,
     reference_rectangle_width: f64,
 }
 
@@ -46,9 +44,7 @@ impl From<&DynamicText> for XMLElement {
         //
         // reversed and slightly modified after looking at the result in element-editor:
         //
-        let     pt_size: f64   = txt.font.point_size;
-        let mut x_pos: f64   = txt.x + 0.5 - (pt_size/8.0) - 4.05;
-        let     y_pos: f64   = txt.y + 0.5 - (7.0/5.0*pt_size + 26.0/5.0) + pt_size;
+        let pt_size: f64 = txt.font.point_size;
         //
         // we need the horizontal alignment and the text-width to move to right x-position:
         // txt.reference_rectangle_width, // should be text-width (Group code 41)
@@ -57,37 +53,28 @@ impl From<&DynamicText> for XMLElement {
         //                        // 4 = Middle left; 5 = Middle center; 6 = Middle right
         //                        // 7 = Bottom left; 8 = Bottom center; 9 = Bottom right
         //
-        let mut h_alignment: HAlignment = HAlignment::Left;
-        let mut _v_alignment: VAlignment = VAlignment::Top;
-        match txt.attachment_point {
-            1|4|7 => h_alignment = HAlignment::Left,
-            2|5|8 => h_alignment = HAlignment::Center,
-            3|6|9 => h_alignment = HAlignment::Right,
-            _     => (),
-        };
-        match txt.attachment_point {
-            1..=3 => _v_alignment = VAlignment::Top,
-            4..=6 => _v_alignment = VAlignment::Center,
-            7..=9 => _v_alignment = VAlignment::Bottom,
-            _     => (),
-        };
         //
         // it's just annoying if the value for "reference_rectangle_width" in the dxf is “0.0”...
         //
         // o.k. ... as long as we do not know the real width:
         // "guess" the width by number of characters and font-size:
         //
-        let     graphene_count: usize = txt.text.graphemes(true).count();
-        let mut txt_width = (graphene_count  as f64) * pt_size * 0.75;
-        if txt.reference_rectangle_width > 2.0 {
-            txt_width = txt.reference_rectangle_width;
-        }
-
-        match h_alignment {
-            HAlignment::Left   => x_pos -=  0.0,
-            HAlignment::Center => x_pos -= txt_width / 2.0,
-            HAlignment::Right  => x_pos -= txt_width,
+        let graphene_count = txt.text.graphemes(true).count();
+        let txt_width = if txt.reference_rectangle_width > 2.0 {
+            txt.reference_rectangle_width
+        } else {
+            (graphene_count as f64) * pt_size * 0.75
         };
+
+        let x_pos = {
+            let x_pos = txt.x + 0.5 - (pt_size / 8.0) - 4.05;
+            match txt.h_alignment {
+                HAlignment::Left => x_pos,
+                HAlignment::Center => x_pos - txt_width / 2.0,
+                HAlignment::Right => x_pos - txt_width,
+            }
+        };
+        let y_pos = txt.y + 0.5 - (7.0 / 5.0 * pt_size + 26.0 / 5.0) + pt_size;
 
         dtxt_xml.add_attribute("x", two_dec(x_pos));
         dtxt_xml.add_attribute("y", two_dec(y_pos));
@@ -152,7 +139,6 @@ impl ScaleEntity for DynamicText {
 
 pub struct DTextBuilder<'a> {
     text: TextEntity<'a>,
-    attach_point: i32,
     color: Option<HexColor>,
 }
 
@@ -161,7 +147,6 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::Text(text),
             color: None,
-            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
         }
     }
 
@@ -169,7 +154,6 @@ impl<'a> DTextBuilder<'a> {
         Self {
             text: TextEntity::MText(text),
             color: None,
-            attach_point: dxf::enums::AttachmentPoint::TopLeft as i32,
         }
     }
 
@@ -181,7 +165,18 @@ impl<'a> DTextBuilder<'a> {
     }
 
     pub fn build(self) -> DynamicText {
-        let (x, y, z, rotation, style_name, text_height, value, attachment_point, reference_rectangle_width) = match self.text {
+        let (
+            x,
+            y,
+            z,
+            rotation,
+            style_name,
+            text_height,
+            value,
+            h_alignment,
+            v_alignment,
+            reference_rectangle_width,
+        ) = match self.text {
             TextEntity::Text(txt) => (
                 txt.location.x,
                 -txt.location.y,
@@ -190,7 +185,8 @@ impl<'a> DTextBuilder<'a> {
                 &txt.text_style_name,
                 txt.text_height,
                 txt.value.clone(),
-                dxf::enums::AttachmentPoint::TopLeft as i32, // as Placeholder: no AttachmentPoint with Text!!!
+                HAlignment::from(txt.horizontal_text_justification),
+                VAlignment::from(txt.vertical_text_justification),
                 0.0, // as Placeholder: no "reference_rectangle_width" with Text!!!
             ),
             TextEntity::MText(mtxt) => (
@@ -213,7 +209,8 @@ impl<'a> DTextBuilder<'a> {
                 //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
                 //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
                 mtxt.text.replace("\\P", "\n"),
-                mtxt.attachment_point as i32,
+                HAlignment::from(mtxt.attachment_point),
+                VAlignment::from(mtxt.attachment_point),
                 mtxt.reference_rectangle_width,
             ),
         };
@@ -266,24 +263,18 @@ impl<'a> DTextBuilder<'a> {
                 }
             } else {
                 //clearly right now this is exactly the same as the main body of the if block
-                //I'm jus putting this in for now, to compile while I get he font handling
+                //I'm jus putting this in for now, to compile while I get the font handling
                 //working correctly
                 FontInfo {
                     point_size: text_height,
                     ..Default::default()
                 }
             },
-            attachment_point, //liest aus der dxf-Datei!!!
             reference_rectangle_width, //liest aus der dxf-Datei!!!
-            h_alignment: HAlignment::Left,
-            v_alignment: VAlignment::Top,
+            h_alignment,
+            v_alignment,
             text_from: "UserText".into(),
             frame: false,
-
-            //why is this -1, does that just mean auto calculate?....no I think antonio just put that in so he wouldn't
-            //have to try and calculate the text width, and let the elemtn editor fix it. I need to calculate it
-            //properly to get alignment correct and such if things aren't using the default top left alignment.
-            //so I need to add in some logic to do this correctly.
             text_width: -1,
             color: self.color.unwrap_or(HexColor::BLACK),
 
