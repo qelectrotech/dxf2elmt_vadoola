@@ -39,6 +39,7 @@ If you wish to forgo creating an .elmt file, you can use the "-v" argument for v
 
 * Support for the following
     * Remaining 2d entities
+    * Styling (such as Dimension Styles)
 
 * Better error messages
 * Logging
@@ -49,6 +50,7 @@ Compiled using Rust (MSRV 1.74.1).
 
 ## Credits
 
+* [Antonioaja](https://github.com/antonioaja) for creating the initial versions of [dxf2elmt](https://github.com/antonioaja/dxf2elmt). Thank you for all your work.
 * [QElectroTech](https://qelectrotech.org/)
 * [dxf-rs](https://github.com/IxMilia/dxf-rs)
 * [simple-xml-builder](https://github.com/Accelbread/simple-xml-builder)
