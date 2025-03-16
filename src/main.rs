@@ -1,29 +1,3 @@
-// TODO: check clippy lints that can get cleaned up
-// TODO: improve error handling
-// TODO: add ability to pass multiple dxf files insead of just a single one
-// TODO: add in logging?
-// TODO: add support for missing entities
-// TODO: Add in some unit tests
-// TODO: See if I can find some open licences DXF files I could use to test against
-//      * https://github.com/GSStnb/dxfBlocks
-//      * https://people.math.sc.edu/Burkardt/data/dxf/dxf.html
-//      * https://github.com/jscad/sample-files/tree/master
-// TODO: See if i can add any parallelization.
-// NOTE: The dxf crate hasn't had an update in 3 years, I was wondering if there were any other crates worth updating to.
-//       it looks like the answer is no...but the crate isn't completely dead. it hasn't had a release in 3 years, but had
-//       some commits about 5 months ago.
-// NOTE: simple-xml-builder also hasn't had any updates in 3 years (or commits) but a straight forward api. Not sure if this is worth
-//       swapping out for a more maintained crate, but it could be worth looking into
-// NOTE: the bspline crate hasn't had a commit in 2 years, but once again, might not be worth trying to swap. There is stroke which is
-//       slightly more up to date, but has a bunch of extra features that I'm not sure are needed. There is a bsplines crate built on
-//       nalgebra, but looks to be very early stages. What about Kurbo? Part of the Xilem project, activly maintained, but i'm not sure
-//       how stable it is, or if it can actually do what's needed. could be worth looking into.
-//TODO: looking more closely at the way this is written, I don't feel passing in mutable int's for counts and a mutable XMLElement for updating
-//      is really the best way to do this....probably better to have the add function return a Result<(XMLElement, count), Err, So it's either
-//      returning an error (because there are none or some other failure?) or a count of how many elements plus the element....wait the count
-//      is only ever incremented by 1...why is it inside these functions in the first place.....just return a Result<XMLElement, Err> if it
-//      returns an element increment the count...
-
 #![warn(
     clippy::all,
     clippy::pedantic,
