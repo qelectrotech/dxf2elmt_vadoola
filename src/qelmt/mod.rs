@@ -85,8 +85,8 @@ impl Circularity for Polyline {
         };
 
         let poly_area = {
-            //because instead of being able to access the Vec like in LwPolyline, verticies() returns
-            //an iter of dxf Vertex's which don't implment clone so I can't use circular_tuple_windows
+            //because instead of being able to access the Vec like in LwPolyline, vertices() returns
+            //an iter of dxf Vertex's which don't implement clone so I can't use circular_tuple_windows
             //there is probably a cleaner way of iterating over this, but it's late, I'm getting tired
             //and just want to see if this basic idea will work on my sample file, or see if I'm chasing
             //up the wrong tree.
@@ -134,8 +134,8 @@ impl Circularity for LwPolyline {
         };
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
-        //this boundry of 2% has been chosen arbitrarily, I might adjust this later
-        //I know in on of my sample files, I'm geting a value of 0.99....
+        //this boundary of 2% has been chosen arbitrarily, I might adjust this later
+        //I know in on of my sample files, I'm getting a value of 0.99....
         (0.98..=1.02).contains(&t_ratio)
     }
 }
@@ -455,7 +455,7 @@ impl<'a> ObjectsBuilder<'a> {
                 match poly.coordinates.len() {
                     0 | 1 => Err("Error removing empty Spline"),
                     //I'll need to improve my understanding of splines and the math here
-                    //to make sure I do this correclty.
+                    //to make sure I do this correctly.
                     //2 => //convert to line
                     _ => {
                         for cord in &mut poly.coordinates {
@@ -841,7 +841,7 @@ impl From<&ElmtUuid> for XMLElement {
 //I need to check what these other item types are used for. I think it's unlikely
 //I'll ever need for this tool, so it might be worth just hard coding the "element"
 //string when writing out the XML, but for now I'll just comment out the other enum
-//varients to supress the clippy warnings.
+//variants to suppress the clippy warnings.
 #[derive(Debug)]
 enum ItemType {
     Element = 1,
@@ -1068,8 +1068,8 @@ pub fn two_dec(num: f64) -> f64 {
     (num * 100.0).round() / 100.0
 }
 
-//Should be the relevant Qt5 Code for the font strng in Qt5...
-//Migth need to look it up for Qt6, since it appears to have changed
+//Should be the relevant Qt5 Code for the font string in Qt5...
+//Might need to look it up for Qt6, since it appears to have changed
 //and add in support for either or?
 
 /*https://codebrowser.dev/qt5/qtbase/src/gui/text/qfont.cpp.html
