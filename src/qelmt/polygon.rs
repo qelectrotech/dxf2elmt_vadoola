@@ -119,8 +119,7 @@ impl From<(&Spline, u32)> for Polygon {
             knots.push(spline.knot_values[i]);
             i += 1;
         }
-        let curr_spline =
-            bspline::BSpline::new(spline.degree_of_curve.try_into().unwrap(), points, knots);
+        let curr_spline = bspline::BSpline::new(spline.degree_of_curve as usize, points, knots);
         let step: f64 =
             (curr_spline.knot_domain().1 - curr_spline.knot_domain().0) / (spline_step as f64);
 

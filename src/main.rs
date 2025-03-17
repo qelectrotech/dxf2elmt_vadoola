@@ -56,7 +56,10 @@ fn main() -> Result<()> {
 
     // Load dxf file
     for file_name in args.file_names {
-        let friendly_file_name = file_name.file_stem().unwrap().to_string_lossy();
+        let friendly_file_name = file_name
+            .file_stem()
+            .unwrap_or_else(|| file_name.as_os_str())
+            .to_string_lossy();
         let drawing: Drawing = Drawing::load_file(&file_name).context(format!(
             "Failed to load {friendly_file_name}...\n\tMake sure the file is a valid .dxf file.",
         ))?;
@@ -65,7 +68,7 @@ fn main() -> Result<()> {
             println!("{friendly_file_name} loaded...");
         }
 
-        // Intialize counts
+        // Initialize counts
         let mut circle_count: u32 = 0;
         let mut line_count: u32 = 0;
         let mut arc_count: u32 = 0;
@@ -116,7 +119,7 @@ fn main() -> Result<()> {
         });
 
         // Create output file for .elmt
-        let out_file = file_writer::create_file(args.verbose, args.info, &file_name);
+        let out_file = file_writer::create_file(args.verbose, args.info, &file_name)?;
 
         // Write to output file
         XMLElement::from(&q_elmt)

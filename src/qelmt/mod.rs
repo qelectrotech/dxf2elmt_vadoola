@@ -757,8 +757,7 @@ impl From<(&Drawing, u32)> for Description {
                                 .blocks()
                                 .filter(|bl| bl.name == ins.name)
                                 .take(1)
-                                .next()
-                                .unwrap();
+                                .next()?; //if no block with this name is found return none and the item just gets skipped
                             let offset_x = ins.location.x;
                             let offset_y = ins.location.y;
 
