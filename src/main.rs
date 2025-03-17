@@ -122,7 +122,8 @@ fn main() -> Result<()> {
         let out_file = file_writer::create_file(args.verbose, args.info, &file_name)?;
 
         // Write to output file
-        XMLElement::from(&q_elmt)
+        let out_xml = XMLElement::from(&q_elmt);
+        out_xml
             .write(&out_file)
             .context("Failed to write output file.")?;
 
@@ -148,7 +149,7 @@ fn main() -> Result<()> {
         }
 
         if args.verbose {
-            file_writer::verbose_print(out_file);
+            print!("{}", out_xml);
         }
     }
 
