@@ -14,10 +14,10 @@ use clap::Parser;
 use dxf::entities::EntityType;
 use dxf::Drawing;
 use qelmt::Definition;
+//use rayon::prelude::*;
 use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
-//use rayon::prelude::*;
 mod qelmt;
 
 #[derive(Parser, Debug)]
@@ -82,6 +82,7 @@ fn main() -> Result<()> {
         let mut other_count: u32 = 0;
 
         // Loop through all entities, counting the element types
+        //drawing.entities().for_each(|e| match e.specific {
         drawing.entities().for_each(|e| match e.specific {
             EntityType::Circle(ref _circle) => {
                 circle_count += 1;
@@ -149,7 +150,7 @@ fn main() -> Result<()> {
         }
 
         if args.verbose {
-            print!("{}", out_xml);
+            print!("{out_xml}");
         }
     }
 
