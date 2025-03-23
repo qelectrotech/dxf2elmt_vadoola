@@ -1,7 +1,7 @@
 use dxf::entities::{Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
 use dxf::enums::{AttachmentPoint, HorizontalTextJustification, Units, VerticalTextJustification};
-use dxf::Drawing;
+use dxf::{Block, Drawing};
 use dynamictext::DTextBuilder;
 use hex_color::HexColor;
 use itertools::Itertools;
@@ -28,6 +28,17 @@ pub use polygon::Polygon;
 
 pub mod ellipse;
 pub use ellipse::Ellipse;
+
+fn find_block<'a>(drw: &'a Drawing, name: &str) -> Option<&'a Block> {
+    //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
+    //blocks out of the drawing it works.
+    //I mean would this ever return more than 1? I would assume block names have to be unique?
+    //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
+    //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
+    //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
+    //an entity? So I don't think there is any easy way to get the handle
+    drw.blocks().filter(|bl| bl.name == name).take(1).next()
+}
 
 #[derive(Debug)]
 enum Either<L, R> {
@@ -284,7 +295,18 @@ pub(crate) enum Objects {
     Text(Text),
     Line(Line),
     //Terminal(Terminal),
-    Block(Vec<Objects>),
+    Group(Vec<Objects>),
+}
+
+impl<'a> IntoIterator for &'a Objects {
+    type Item = &'a Objects;
+    type IntoIter = std::slice::Iter<'a, Objects>;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Objects::Group(vec) => vec.into_iter(),
+            _ => std::slice::from_ref(self).into_iter(),
+        }
+    }
 }
 
 impl ScaleEntity for Objects {
@@ -296,7 +318,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact),
             Objects::Text(text) => text.scale(fact),
             Objects::Line(line) => line.scale(fact),
-            Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact)),
+            Objects::Group(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact)),
         }
     }
 
@@ -308,7 +330,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.left_bound(),
             Objects::Text(text) => text.left_bound(),
             Objects::Line(line) => line.left_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let lb = vec.iter().min_by(|ob1, ob2| {
                     ob1.left_bound()
                         .partial_cmp(&ob2.left_bound())
@@ -332,7 +354,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.right_bound(),
             Objects::Text(text) => text.right_bound(),
             Objects::Line(line) => line.right_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let rb = vec.iter().max_by(|ob1, ob2| {
                     ob1.right_bound()
                         .partial_cmp(&ob2.right_bound())
@@ -356,7 +378,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.top_bound(),
             Objects::Text(text) => text.top_bound(),
             Objects::Line(line) => line.top_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let tb = vec.iter().min_by(|ob1, ob2| {
                     ob1.top_bound()
                         .partial_cmp(&ob2.top_bound())
@@ -380,7 +402,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.bot_bound(),
             Objects::Text(text) => text.bot_bound(),
             Objects::Line(line) => line.bot_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let bb = vec.iter().max_by(|ob1, ob2| {
                     ob1.bot_bound()
                         .partial_cmp(&ob2.bot_bound())
@@ -400,6 +422,7 @@ impl ScaleEntity for Objects {
 pub struct ObjectsBuilder<'a> {
     ent: &'a Entity,
     spline_step: u32,
+    blocks: Vec<&'a Block>,
     offset_x: Option<f64>,
     offset_y: Option<f64>,
 }
@@ -409,9 +432,14 @@ impl<'a> ObjectsBuilder<'a> {
         Self {
             ent,
             spline_step,
+            blocks: Vec::new(),
             offset_x: None,
             offset_y: None,
         }
+    }
+
+    pub fn blocks(self, blocks: Vec<&'a Block>) -> Self {
+        Self { blocks, ..self }
     }
 
     pub fn offsets(self, offset_x: f64, offset_y: f64) -> Self {
@@ -589,11 +617,30 @@ impl<'a> ObjectsBuilder<'a> {
                 }
                 Ok(Objects::Polygon(poly))
             }
-            //need to add support for nested blocks here....
+            EntityType::Insert(ins) => {
+                let Some(block) = self.blocks.iter().find(|bl| bl.name == ins.name) else {
+                    return Err("Block Not Found");
+                };
+
+                let offset_x = offset_x + ins.location.x;
+                let offset_y = offset_y + ins.location.y; //should this be plus or minux ins.location.y?
+                Ok(Objects::Group(
+                    block
+                        .entities
+                        .iter()
+                        .filter_map(|ent| {
+                            ObjectsBuilder::new(ent, self.spline_step)
+                                .offsets(offset_x, offset_y)
+                                .build()
+                                .ok()
+                        })
+                        .collect(),
+                ))
+            }
             EntityType::Leader(leader) => {
                 let ld: Leader = leader.into();
 
-                Ok(Objects::Block(
+                Ok(Objects::Group(
                     ld.0.into_iter()
                         .map(|mut ln| {
                             ln.x1 += offset_x;
@@ -623,9 +670,10 @@ impl From<&Objects> for Either<XMLElement, Vec<XMLElement>> {
             Objects::DynamicText(dtext) => Either::Left(dtext.into()),
             Objects::Text(txt) => Either::Left(txt.into()),
             Objects::Line(line) => Either::Left(line.into()),
-            Objects::Block(block) => Either::Right(
+            Objects::Group(block) => Either::Right(
                 block
                     .iter()
+                    .flatten()
                     .filter_map(|obj| XMLElement::try_from(obj).ok())
                     .collect(),
             ),
@@ -743,39 +791,27 @@ impl From<(&Drawing, u32)> for Description {
         Self {
             objects: drw
                 .entities()
-                .filter_map(|ent| {
-                    match &ent.specific {
-                        EntityType::Insert(ins) => {
-                            //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
-                            //blocks out of the drawing it works.
-                            //I mean would this ever return more than 1? I would assume block names have to be unique?
-                            //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
-                            //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
-                            //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
-                            //and entity? So I don't think there is any easy way to get the handle
-                            let block = drw
-                                .blocks()
-                                .filter(|bl| bl.name == ins.name)
-                                .take(1)
-                                .next()?; //if no block with this name is found return none and the item just gets skipped
-                            let offset_x = ins.location.x;
-                            let offset_y = ins.location.y;
+                .filter_map(|ent| match &ent.specific {
+                    EntityType::Insert(ins) => {
+                        let block = find_block(drw, &ins.name)?;
+                        let offset_x = ins.location.x;
+                        let offset_y = ins.location.y;
 
-                            Some(Objects::Block(
-                                block
-                                    .entities
-                                    .iter()
-                                    .filter_map(|ent| {
-                                        ObjectsBuilder::new(ent, spline_step)
-                                            .offsets(offset_x, offset_y)
-                                            .build()
-                                            .ok()
-                                    })
-                                    .collect(),
-                            ))
-                        }
-                        _ => ObjectsBuilder::new(ent, spline_step).build().ok(),
+                        Some(Objects::Group(
+                            block
+                                .entities
+                                .iter()
+                                .filter_map(|ent| {
+                                    ObjectsBuilder::new(ent, spline_step)
+                                        .offsets(offset_x, offset_y)
+                                        .blocks(drw.blocks().collect())
+                                        .build()
+                                        .ok()
+                                })
+                                .collect(),
+                        ))
                     }
+                    _ => ObjectsBuilder::new(ent, spline_step).build().ok(),
                 })
                 .collect(),
         }
@@ -1078,22 +1114,22 @@ pub fn two_dec(num: f64) -> f64 {
     comma-separated list of the attributes, perfectly suited for use
     in QSettings, and consists of the following:
     \list
-      \li Font family
-      \li Point size
-      \li Pixel size
-      \li Style hint
-      \li Font weight
-      \li Font style
-      \li Underline
-      \li Strike out
-      \li Fixed pitch
-      \li Always \e{0}
-      \li Capitalization
-      \li Letter spacing
-      \li Word spacing
-      \li Stretch
-      \li Style strategy
-      \li Font style (omitted when unavailable)
+    \li Font family
+    \li Point size
+    \li Pixel size
+    \li Style hint
+    \li Font weight
+    \li Font style
+    \li Underline
+    \li Strike out
+    \li Fixed pitch
+    \li Always \e{0}
+    \li Capitalization
+    \li Letter spacing
+    \li Word spacing
+    \li Stretch
+    \li Style strategy
+    \li Font style (omitted when unavailable)
     \endlist
     \sa fromString()
  */
