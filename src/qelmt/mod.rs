@@ -1191,7 +1191,7 @@ impl Default for FontInfo {
         //Might want to revisit these defaults
         //but I'll put something in for now
         Self {
-            family: "Arial Narrow".into(),
+            family: "osifont".into(),
             point_size: 12.0,
             pixel_size: i32::default(),
             style_hint: FontStyleHint::Helvetica,

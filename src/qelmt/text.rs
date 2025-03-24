@@ -26,7 +26,6 @@ impl From<(&entities::Text, HexColor)> for Text {
             },
             color,
             font: if &txt.text_style_name == "STANDARD" {
-                //"Arial Narrow".into()
                 FontInfo::default()
             } else {
                 //txt.text_style_name.clone()
