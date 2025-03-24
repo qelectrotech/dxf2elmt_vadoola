@@ -1,4 +1,4 @@
-use dxf::entities::{Entity, EntityType};
+use dxf::entities::{AttributeDefinition, Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
 use dxf::enums::{AttachmentPoint, HorizontalTextJustification, Units, VerticalTextJustification};
 use dxf::{Block, Drawing};
@@ -65,6 +65,7 @@ pub struct Definition {
 
 //Since the ScaleEntity trait was added to all the objects/elements
 //and I need to add the get bounds to all it probably makes sense to have
+
 //them all within the same trait instead of multiple traits, as a collective
 //set of functions needed by the objects...but I should probably come up with
 //a better trait name then. For now I'll leave it and just get the code working
@@ -303,8 +304,8 @@ impl<'a> IntoIterator for &'a Objects {
     type IntoIter = std::slice::Iter<'a, Objects>;
     fn into_iter(self) -> Self::IntoIter {
         match self {
-            Objects::Group(vec) => vec.into_iter(),
-            _ => std::slice::from_ref(self).into_iter(),
+            Objects::Group(vec) => vec.iter(),
+            _ => std::slice::from_ref(self).iter(),
         }
     }
 }
@@ -653,8 +654,17 @@ impl<'a> ObjectsBuilder<'a> {
                         .collect(),
                 ))
             }
+            EntityType::AttributeDefinition(attrib) => Ok({
+                //need to look up the proper way to get the color for the Attrib
+                let mut dtext = DTextBuilder::from_attrib(attrib)
+                    .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
+                    .build();
+                dtext.x += offset_x;
+                dtext.y -= offset_y;
+                Objects::DynamicText(dtext)
+            }),
             _ => {
-                //dbg!(&ent.specific);
+                //dbg!(&self.ent.specific);
                 Err("Need to implement the rest of the entity types")
             }
         }
@@ -1268,4 +1278,5 @@ impl Display for FontInfo {
 enum TextEntity<'a> {
     Text(&'a dxf::entities::Text),
     MText(&'a dxf::entities::MText),
+    Attrib(&'a AttributeDefinition),
 }

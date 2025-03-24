@@ -1,5 +1,5 @@
 use super::{two_dec, FontInfo, ScaleEntity, TextEntity};
-use dxf::entities;
+use dxf::entities::{self, AttributeDefinition};
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use unicode_segmentation::UnicodeSegmentation;
@@ -157,6 +157,13 @@ impl<'a> DTextBuilder<'a> {
         }
     }
 
+    pub fn from_attrib(attrib: &'a AttributeDefinition) -> Self {
+        Self {
+            text: TextEntity::Attrib(attrib),
+            color: None,
+        }
+    }
+
     pub fn color(self, color: HexColor) -> Self {
         Self {
             color: Some(color),
@@ -212,6 +219,18 @@ impl<'a> DTextBuilder<'a> {
                 HAlignment::from(mtxt.attachment_point),
                 VAlignment::from(mtxt.attachment_point),
                 mtxt.reference_rectangle_width,
+            ),
+            TextEntity::Attrib(attrib) => (
+                attrib.location.x,
+                -attrib.location.y,
+                attrib.location.z,
+                attrib.rotation,
+                &attrib.text_style_name,
+                attrib.text_height,
+                attrib.value.clone(),
+                HAlignment::from(attrib.horizontal_text_justification),
+                VAlignment::from(attrib.vertical_text_justification),
+                0.0, // as Placeholder: not need to check if Attrib has something similar
             ),
         };
 
