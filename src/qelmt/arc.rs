@@ -69,11 +69,11 @@ impl From<&Arc> for XMLElement {
 }
 
 impl ScaleEntity for Arc {
-    fn scale(&mut self, fact: f64) {
-        self.x *= fact;
-        self.y *= fact;
-        self.width *= fact;
-        self.height *= fact;
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        self.width *= fact_x;
+        self.height *= fact_y;
     }
 
     fn left_bound(&self) -> f64 {

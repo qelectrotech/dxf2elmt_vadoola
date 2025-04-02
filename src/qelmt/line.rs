@@ -172,12 +172,12 @@ impl From<&Line> for XMLElement {
 }
 
 impl ScaleEntity for Line {
-    fn scale(&mut self, fact: f64) {
-        self.x1 *= fact;
-        self.x2 *= fact;
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x1 *= fact_x;
+        self.x2 *= fact_x;
 
-        self.y1 *= fact;
-        self.y2 *= fact;
+        self.y1 *= fact_y;
+        self.y2 *= fact_y;
 
         //while writing this scaling code, I'm looking at
         //QET_ElementScaler from plc-user to see if there are
@@ -186,10 +186,10 @@ impl ScaleEntity for Line {
         //to 99.0, but I'm not sure why at the moment. I'll go
         //ahead and limit them as well, and try to come back to
         //figure out what the purpose here is
-        self.length1 *= fact;
+        self.length1 *= fact_x.min(fact_y);
         self.length1 = self.length1.min(99.0);
 
-        self.length2 *= fact;
+        self.length2 *= fact_x.min(fact_y);
         self.length2 = self.length2.min(99.0);
     }
 
