@@ -215,7 +215,17 @@ impl<'a> DTextBuilder<'a> {
                 //I edited one of them in QCad, and added a few lines. The value came through in the text field
                 //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
                 //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
-                mtxt.text.replace("\\P", "\n"),
+                //So looking at the spec, yes '\P' is the MTEXT newline essentially. There is a bunch of MTEXT
+                //inline codes that can be found at https://ezdxf.readthedocs.io/en/stable/dxfentities/mtext.html
+                //The extended text is code point 3 in the dxf spec which just says: "Additional text (always in 250-character chunks) (optional)"
+                //and Code point 1 the normal text value says: "Text string. If the text string is less than 250 characters, all characters appear
+                //in group 1. If the text string is greater than 250 characters, the string is divided into 250-character chunks, which appear in
+                //one or more group 3 codes. If group 3 codes are used, the last group is a group 1 and has fewer than 250 characters"
+                {
+                    let mut val = mtxt.extended_text.join("");
+                    val.push_str(&mtxt.text);
+                    val.replace("\\P", "\n")
+                },
                 HAlignment::from(mtxt.attachment_point),
                 VAlignment::from(mtxt.attachment_point),
                 mtxt.reference_rectangle_width,
