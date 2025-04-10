@@ -299,14 +299,52 @@ pub(crate) enum Objects {
     Group(Vec<Objects>),
 }
 
-impl<'a> IntoIterator for &'a Objects {
-    type Item = &'a Objects;
-    type IntoIter = std::slice::Iter<'a, Objects>;
-    fn into_iter(self) -> Self::IntoIter {
-        match self {
-            Objects::Group(vec) => vec.iter(),
-            _ => std::slice::from_ref(self).iter(),
+impl Objects {
+    pub fn descendants(&self) -> Descendants<'_> {
+        Descendants {
+            stack: vec![self.children()],
         }
+    }
+
+    pub fn children(&self) -> Children<'_> {
+        match self {
+            Objects::Group(l) => Children { slice: l.iter() },
+            _ => Children { slice: [].iter() },
+        }
+    }
+}
+
+pub(crate) struct Descendants<'a> {
+    stack: Vec<Children<'a>>,
+}
+
+impl<'a> Iterator for Descendants<'a> {
+    type Item = &'a Objects;
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(last) = self.stack.last_mut() {
+            if let Some(obj) = last.next() {
+                self.stack.push(obj.children());
+                return Some(obj);
+            } else {
+                self.stack.pop();
+            }
+        }
+        None
+    }
+}
+
+pub(crate) struct Children<'a> {
+    slice: std::slice::Iter<'a, Objects>,
+}
+
+impl<'a> Iterator for Children<'a> {
+    type Item = &'a Objects;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.slice.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.slice.len(), None)
     }
 }
 
@@ -419,15 +457,29 @@ impl ScaleEntity for Objects {
         }
     }
 }
+struct ScaleFactor {
+    x: f64,
+    y: f64,
+}
+
+impl Default for ScaleFactor {
+    fn default() -> Self {
+        ScaleFactor { x: 1.0, y: 1.0 }
+    }
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct Offset {
+    x: f64,
+    y: f64,
+}
 
 pub struct ObjectsBuilder<'a> {
     ent: &'a Entity,
     spline_step: u32,
-    blocks: Vec<&'a Block>,
-    offset_x: Option<f64>,
-    offset_y: Option<f64>,
-    fact_x: Option<f64>,
-    fact_y: Option<f64>,
+    blocks: &'a [&'a Block],
+    offset: Offset,
+    scale_fact: ScaleFactor,
 }
 
 impl<'a> ObjectsBuilder<'a> {
@@ -435,67 +487,62 @@ impl<'a> ObjectsBuilder<'a> {
         Self {
             ent,
             spline_step,
-            blocks: Vec::new(),
-            offset_x: None,
-            offset_y: None,
-            fact_x: None,
-            fact_y: None,
+            blocks: &[],
+            offset: Default::default(),
+            scale_fact: Default::default(),
         }
     }
 
-    pub fn blocks(self, blocks: Vec<&'a Block>) -> Self {
+    pub fn blocks(self, blocks: &'a [&'a Block]) -> Self {
         Self { blocks, ..self }
     }
 
-    pub fn offsets(self, offset_x: f64, offset_y: f64) -> Self {
+    pub fn offsets(self, x: f64, y: f64) -> Self {
         Self {
-            offset_x: Some(offset_x),
-            offset_y: Some(offset_y),
+            offset: Offset { x, y },
             ..self
         }
     }
 
     pub fn scaling(self, fact_x: f64, fact_y: f64) -> Self {
         Self {
-            fact_x: Some(fact_x),
-            fact_y: Some(fact_y),
+            scale_fact: ScaleFactor {
+                x: fact_x,
+                y: fact_y,
+            },
             ..self
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn build(self) -> Result<Objects, &'static str /*add better error later*/> {
-        let offset_x = self.offset_x.unwrap_or(0.0);
-        let offset_y = self.offset_y.unwrap_or(0.0);
         match &self.ent.specific {
             EntityType::Circle(circle) => {
                 let mut ellipse: Ellipse = circle.into();
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    ellipse.scale(fact_x, fact_y);
-                }
-                ellipse.x += offset_x;
-                ellipse.y -= offset_y;
+
+                ellipse.x += self.offset.x;
+                ellipse.y -= self.offset.y;
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
                 Ok(Objects::Ellipse(ellipse))
             }
             EntityType::Line(line) => {
                 let mut line: Line = line.into();
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    line.scale(fact_x, fact_y);
-                }
-                line.x1 += offset_x;
-                line.y1 -= offset_y;
 
-                line.x2 += offset_x;
-                line.y2 -= offset_y;
+                line.x1 += self.offset.x;
+                line.y1 -= self.offset.y;
+
+                line.x2 += self.offset.x;
+                line.y2 -= self.offset.y;
+                line.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Line(line))
             }
             EntityType::Arc(arc) => {
                 let mut arc: Arc = arc.into();
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    arc.scale(fact_x, fact_y);
-                }
-                arc.x += offset_x;
-                arc.y -= offset_y;
+
+                arc.x += self.offset.x;
+                arc.y -= self.offset.y;
+                arc.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Arc(arc))
             }
@@ -508,13 +555,11 @@ impl<'a> ObjectsBuilder<'a> {
                     //to make sure I do this correctly.
                     //2 => //convert to line
                     _ => {
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            poly.scale(fact_x, fact_y);
-                        }
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -535,22 +580,20 @@ impl<'a> ObjectsBuilder<'a> {
                             HexColor::from_u32(self.ent.common.color_24_bit as u32),
                         )
                             .into();
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            text.scale(fact_x, fact_y);
-                        }
-                        text.x += offset_x;
-                        text.y -= offset_y;
+
+                        text.x += self.offset.x;
+                        text.y -= self.offset.y;
+                        text.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Objects::Text(text)
                     } else {
                         let mut dtext = DTextBuilder::from_text(text)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            dtext.scale(fact_x, fact_y);
-                        }
-                        dtext.x += offset_x;
-                        dtext.y -= offset_y;
+
+                        dtext.x += self.offset.x;
+                        dtext.y -= self.offset.y;
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Objects::DynamicText(dtext)
                     },
@@ -558,11 +601,10 @@ impl<'a> ObjectsBuilder<'a> {
             }
             EntityType::Ellipse(ellipse) => {
                 let mut ellipse: Ellipse = ellipse.into();
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    ellipse.scale(fact_x, fact_y);
-                }
-                ellipse.x += offset_x;
-                ellipse.y -= offset_y;
+
+                ellipse.x += self.offset.x;
+                ellipse.y -= self.offset.y;
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Ellipse(ellipse))
             }
@@ -586,11 +628,10 @@ impl<'a> ObjectsBuilder<'a> {
                         let mut dtext = DTextBuilder::from_mtext(mtext)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            dtext.scale(fact_x, fact_y);
-                        }
-                        dtext.x += offset_x;
-                        dtext.y -= offset_y;
+
+                        dtext.x += self.offset.x;
+                        dtext.y -= self.offset.y;
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Objects::DynamicText(dtext)
                     },
@@ -600,35 +641,31 @@ impl<'a> ObjectsBuilder<'a> {
                 0 | 1 => Err("Error empty Polyline"),
                 2 => {
                     let mut line = Line::try_from(polyline)?;
-                    if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                        line.scale(fact_x, fact_y);
-                    }
-                    line.x1 += offset_x;
-                    line.y1 -= offset_y;
 
-                    line.x2 += offset_x;
-                    line.y2 -= offset_y;
+                    line.x1 += self.offset.x;
+                    line.y1 -= self.offset.y;
+
+                    line.x2 += self.offset.x;
+                    line.y2 -= self.offset.y;
+                    line.scale(self.scale_fact.x, self.scale_fact.x);
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(polyline) {
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            ellipse.scale(fact_x, fact_y);
-                        }
-                        ellipse.x += offset_x;
-                        ellipse.y -= offset_y;
+                        ellipse.x += self.offset.x;
+                        ellipse.y -= self.offset.y;
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = polyline.into();
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            poly.scale(fact_x, fact_y);
-                        }
+
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -638,35 +675,31 @@ impl<'a> ObjectsBuilder<'a> {
                 0 | 1 => Err("Error empty LwPolyline"),
                 2 => {
                     let mut line = Line::try_from(lwpolyline)?;
-                    if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                        line.scale(fact_x, fact_y);
-                    }
-                    line.x1 += offset_x;
-                    line.y1 -= offset_y;
 
-                    line.x2 += offset_x;
-                    line.y2 -= offset_y;
+                    line.x1 += self.offset.x;
+                    line.y1 -= self.offset.y;
+
+                    line.x2 += self.offset.x;
+                    line.y2 -= self.offset.y;
+                    line.scale(self.scale_fact.x, self.scale_fact.y);
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(lwpolyline) {
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            ellipse.scale(fact_x, fact_y);
-                        }
-                        ellipse.x += offset_x;
-                        ellipse.y -= offset_y;
+                        ellipse.x += self.offset.x;
+                        ellipse.y -= self.offset.y;
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = lwpolyline.into();
-                        if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                            poly.scale(fact_x, fact_y);
-                        }
+
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -675,13 +708,11 @@ impl<'a> ObjectsBuilder<'a> {
             EntityType::Solid(solid) => {
                 let mut poly: Polygon = solid.into();
 
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    poly.scale(fact_x, fact_y);
-                }
                 for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+                    cord.x += self.offset.x;
+                    cord.y -= self.offset.y;
                 }
+                poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Polygon(poly))
             }
@@ -690,16 +721,18 @@ impl<'a> ObjectsBuilder<'a> {
                     return Err("Block Not Found");
                 };
 
-                let offset_x = offset_x + ins.location.x;
-                let offset_y = offset_y + ins.location.y; //TODO: should this be plus or minux ins.location.y?
                 Ok(Objects::Group(
                     block
                         .entities
                         .iter()
                         .filter_map(|ent| {
                             ObjectsBuilder::new(ent, self.spline_step)
-                                .offsets(offset_x, offset_y)
-                                .scaling(ins.x_scale_factor, ins.y_scale_factor)
+                                .offsets(self.offset.x, self.offset.y)
+                                .scaling(
+                                    self.scale_fact.x * ins.x_scale_factor,
+                                    self.scale_fact.y * ins.y_scale_factor,
+                                )
+                                .blocks(self.blocks)
                                 .build()
                                 .ok()
                         })
@@ -712,11 +745,13 @@ impl<'a> ObjectsBuilder<'a> {
                 Ok(Objects::Group(
                     ld.0.into_iter()
                         .map(|mut ln| {
-                            ln.x1 += offset_x;
-                            ln.y1 -= offset_y;
+                            ln.x1 += self.offset.x;
+                            ln.y1 -= self.offset.y;
 
-                            ln.x2 += offset_x;
-                            ln.y2 -= offset_y;
+                            ln.x2 += self.offset.x;
+                            ln.y2 -= self.offset.y;
+                            ln.scale(self.scale_fact.x, self.scale_fact.y);
+
                             Objects::Line(ln)
                         })
                         .collect(),
@@ -727,11 +762,10 @@ impl<'a> ObjectsBuilder<'a> {
                 let mut dtext = DTextBuilder::from_attrib(attrib)
                     .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                     .build();
-                if let (Some(fact_x), Some(fact_y)) = (self.fact_x, self.fact_y) {
-                    dtext.scale(fact_x, fact_y);
-                }
-                dtext.x += offset_x;
-                dtext.y -= offset_y;
+
+                dtext.x += self.offset.x;
+                dtext.y -= self.offset.y;
+                dtext.scale(self.scale_fact.x, self.scale_fact.y);
                 Objects::DynamicText(dtext)
             }),
             _ => {
@@ -754,7 +788,7 @@ impl From<&Objects> for Either<XMLElement, Vec<XMLElement>> {
             Objects::Group(block) => Either::Right(
                 block
                     .iter()
-                    .flatten()
+                    //.flatten()
                     .filter_map(|obj| XMLElement::try_from(obj).ok())
                     .collect(),
             ),
@@ -773,7 +807,7 @@ impl TryFrom<&Objects> for XMLElement {
             Objects::DynamicText(dtext) => Ok(dtext.into()),
             Objects::Text(txt) => Ok(txt.into()),
             Objects::Line(line) => Ok(line.into()),
-            _ => Err("Unsupported"),
+            Objects::Group(_) => Err("Unsupported"),
         }
     }
 }
@@ -851,9 +885,10 @@ impl From<&Description> for XMLElement {
     fn from(desc: &Description) -> Self {
         let mut desc_xml = XMLElement::new("description");
         for obj in &desc.objects {
-            match obj.into() {
-                Either::Left(elem) => desc_xml.add_child(elem),
-                Either::Right(vec) => vec.into_iter().for_each(|elem| desc_xml.add_child(elem)),
+            for obj in obj.descendants() {
+                if let Ok(elem) = XMLElement::try_from(obj) {
+                    desc_xml.add_child(elem);
+                }
             }
         }
         desc_xml
@@ -879,6 +914,7 @@ impl From<(&Drawing, u32)> for Description {
                         let block = find_block(drw, &ins.name)?;
                         let offset_x = ins.location.x;
                         let offset_y = ins.location.y;
+                        let blocks: Vec<&Block> = drw.blocks().collect();
                         Some(Objects::Group(
                             block
                                 .entities
@@ -887,7 +923,7 @@ impl From<(&Drawing, u32)> for Description {
                                     ObjectsBuilder::new(ent, spline_step)
                                         .offsets(offset_x, offset_y)
                                         .scaling(ins.x_scale_factor, ins.y_scale_factor)
-                                        .blocks(drw.blocks().collect())
+                                        .blocks(&blocks)
                                         .build()
                                         .ok()
                                 })
