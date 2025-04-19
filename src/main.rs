@@ -18,6 +18,13 @@ use qelmt::Definition;
 use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
+use tracing::{error, info, instrument, span, trace, warn, Level};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+
+#[cfg(feature = "venator")]
+use venator::Venator;
+
 mod qelmt;
 
 #[derive(Parser, Debug)]
@@ -48,6 +55,20 @@ struct Args {
 pub mod file_writer;
 
 fn main() -> Result<()> {
+    #[cfg(feature = "venator")]
+    tracing_subscriber::registry()
+        .with(Venator::default())
+        .with(tracing_subscriber::fmt::Layer::default())
+        //.with(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
+
+    #[cfg(not(feature = "venator"))]
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::Layer::default())
+        .init();
+
+    trace!("Starting dxf2elmt");
+
     // Start recording time
     let now: Instant = Instant::now();
 
@@ -55,6 +76,8 @@ fn main() -> Result<()> {
     let args: Args = Args::parse_from(wild::args());
 
     // Load dxf file
+    let dxf_loop_span = span!(Level::TRACE, "Looping over dxf files");
+    let dxf_loop_guard = dxf_loop_span.enter();
     for file_name in args.file_names {
         let friendly_file_name = file_name
             .file_stem()
@@ -153,6 +176,7 @@ fn main() -> Result<()> {
             print!("{out_xml}");
         }
     }
+    drop(dxf_loop_guard);
 
     Ok(())
 }

@@ -11,6 +11,8 @@ use std::f64::consts::PI;
 use std::fmt::Display;
 use uuid::Uuid;
 
+use tracing::{error, info, instrument, span, trace, warn, Level};
+
 pub mod arc;
 pub use arc::Arc;
 
@@ -321,11 +323,15 @@ pub(crate) struct Descendants<'a> {
 impl<'a> Iterator for Descendants<'a> {
     type Item = &'a Objects;
     fn next(&mut self) -> Option<Self::Item> {
+        //let iter_span = span!(Level::TRACE, "Iterating Object Descendants");
+        //let _span_guard = iter_span.enter();
         while let Some(last) = self.stack.last_mut() {
             if let Some(obj) = last.next() {
+                //trace!("Found more children");
                 self.stack.push(obj.children());
                 return Some(obj);
             } else {
+                //trace!("No more children");
                 self.stack.pop();
             }
         }
@@ -457,6 +463,8 @@ impl ScaleEntity for Objects {
         }
     }
 }
+
+#[derive(Debug)]
 struct ScaleFactor {
     x: f64,
     y: f64,
@@ -474,6 +482,7 @@ pub(crate) struct Offset {
     y: f64,
 }
 
+#[derive(Debug)]
 pub struct ObjectsBuilder<'a> {
     ent: &'a Entity,
     spline_step: u32,
@@ -515,6 +524,7 @@ impl<'a> ObjectsBuilder<'a> {
     }
 
     #[allow(clippy::too_many_lines)]
+    #[instrument]
     pub fn build(self) -> Result<Objects, &'static str /*add better error later*/> {
         match &self.ent.specific {
             EntityType::Circle(circle) => {
@@ -717,10 +727,16 @@ impl<'a> ObjectsBuilder<'a> {
                 Ok(Objects::Polygon(poly))
             }
             EntityType::Insert(ins) => {
+                //info!("Found an Insert Block: {ins:?}");
+                info!("Found an Insert Block: {}", &ins.name);
                 let Some(block) = self.blocks.iter().find(|bl| bl.name == ins.name) else {
+                    error!("Block {} not found", ins.name);
                     return Err("Block Not Found");
                 };
 
+                trace!("Creating Group from block {}. Pos(x:{}, y:{}). Offset(x:{}, y:{}). Scale(x:{}, y:{})",
+                    ins.name, ins.location.x, ins.location.y, self.offset.x, self.offset.y, self.scale_fact.x * ins.x_scale_factor,
+                    self.scale_fact.y * ins.y_scale_factor);
                 Ok(Objects::Group(
                     block
                         .entities
@@ -750,6 +766,7 @@ impl<'a> ObjectsBuilder<'a> {
 
                             ln.x2 += self.offset.x;
                             ln.y2 -= self.offset.y;
+
                             ln.scale(self.scale_fact.x, self.scale_fact.y);
 
                             Objects::Line(ln)
@@ -766,6 +783,7 @@ impl<'a> ObjectsBuilder<'a> {
                 dtext.x += self.offset.x;
                 dtext.y -= self.offset.y;
                 dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
                 Objects::DynamicText(dtext)
             }),
             _ => {
@@ -904,7 +922,7 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
-        //let txt_scale_fact = text_to_pt_scaling(drw.header.default_drawing_units);
+        let from_drw_span = span!(Level::TRACE, "Converting Drawing to Description");
 
         Self {
             objects: drw
@@ -915,12 +933,23 @@ impl From<(&Drawing, u32)> for Description {
                         let offset_x = ins.location.x;
                         let offset_y = ins.location.y;
                         let blocks: Vec<&Block> = drw.blocks().collect();
+                        trace!(
+                            "Creating Group from block {}. Pos(x:{}, y:{}). Scale(x:{}, y:{})",
+                            ins.name,
+                            ins.location.x,
+                            ins.location.y,
+                            ins.x_scale_factor,
+                            ins.y_scale_factor
+                        );
                         Some(Objects::Group(
                             block
                                 .entities
                                 .iter()
                                 .filter_map(|ent| {
                                     ObjectsBuilder::new(ent, spline_step)
+                                        //very confused here, in one test file if I leave out the ins locations here it puts things in the
+                                        //wrong location, and puts them in the correct location when I add the ins location in.
+                                        //but in another file it's the opposite, not sure why the difference...
                                         .offsets(offset_x, offset_y)
                                         .scaling(ins.x_scale_factor, ins.y_scale_factor)
                                         .blocks(&blocks)

@@ -30,6 +30,21 @@ hex_color = "3.0.0"
 itertools = "0.14"
 parley = "0.2.0"
 unicode-segmentation = "1.12.0"
+tracing = "0.1"
+venator = { version = "1.1", optional = true }
+tracing-subscriber = "0.3"
 
 #[lints.clippy]
 #unwrap_used = "deny"
+
+
+#undecided on how I want to handle logging in this crate right now.
+#I do want to do a bit of tracing debugging on some of these recursive blocks though
+#for now I'll add tracing and venator under a trace feature that is disabled by default
+#maybe a log feature which uses trace to log to a text file or syslog or something
+#and a seperate feature that logs to venator? Also figure out how best to isolate
+#it to a module, so I don' thave #[cfg(feature = ...)] all over the place
+#https://www.shuttle.dev/blog/2024/01/09/getting-started-tracing-rust#instrumentation-in-tracing
+[features]
+default = []
+venator = ["dep:venator"]
