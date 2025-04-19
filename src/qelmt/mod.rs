@@ -83,6 +83,16 @@ trait ScaleEntity {
 
 trait Circularity {
     fn is_circular(&self) -> bool;
+
+    fn match_range() -> std::ops::RangeInclusive<f64> {
+        //this boundary of 2% has been chosen arbitrarily, I might adjust this later
+        //I know in one of my sample files, I'm getting a value of 0.99....
+        //since Associated Constants in a trait can't have a default value
+        //I'm using this function that defaults to a constant range of 2%
+        //Then I could also easily overwrite it if I wanted to change the tolerance
+        //for a specific type
+        (0.98..=1.02)
+    }
 }
 
 impl Circularity for Polyline {
@@ -117,7 +127,7 @@ impl Circularity for Polyline {
         };
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
-        (0.98..=1.02).contains(&t_ratio)
+        Self::match_range().contains(&t_ratio)
     }
 }
 
@@ -148,9 +158,7 @@ impl Circularity for LwPolyline {
         };
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
-        //this boundary of 2% has been chosen arbitrarily, I might adjust this later
-        //I know in on of my sample files, I'm getting a value of 0.99....
-        (0.98..=1.02).contains(&t_ratio)
+        Self::match_range().contains(&t_ratio)
     }
 }
 
