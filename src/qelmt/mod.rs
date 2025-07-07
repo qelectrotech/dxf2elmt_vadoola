@@ -552,7 +552,6 @@ impl<'a> ObjectsBuilder<'a> {
 
                 line.x2 += self.offset.x;
                 line.y2 -= self.offset.y;
-                
 
                 Ok(Objects::Line(line))
             }
@@ -616,7 +615,6 @@ impl<'a> ObjectsBuilder<'a> {
 
                         dtext.x += self.offset.x;
                         dtext.y -= self.offset.y;
-                        
 
                         Objects::DynamicText(dtext)
                     },
@@ -688,7 +686,7 @@ impl<'a> ObjectsBuilder<'a> {
                         let mut poly: Polygon = polyline.into();
 
                         poly.scale(self.scale_fact.x, self.scale_fact.y);
-                        
+
                         for cord in &mut poly.coordinates {
                             cord.x += self.offset.x;
                             cord.y -= self.offset.y;
@@ -716,7 +714,7 @@ impl<'a> ObjectsBuilder<'a> {
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(lwpolyline) {
                         ellipse.scale(self.scale_fact.x, self.scale_fact.y);
-                        
+
                         ellipse.x += self.offset.x;
                         ellipse.y -= self.offset.y;
 
@@ -764,7 +762,10 @@ impl<'a> ObjectsBuilder<'a> {
                         .iter()
                         .filter_map(|ent| {
                             ObjectsBuilder::new(ent, self.spline_step)
-                                .offsets(self.offset.x + ins.location.x, self.offset.y + ins.location.y)
+                                .offsets(
+                                    self.offset.x + ins.location.x,
+                                    self.offset.y + ins.location.y,
+                                )
                                 .scaling(
                                     self.scale_fact.x * ins.x_scale_factor,
                                     self.scale_fact.y * ins.y_scale_factor,
@@ -783,7 +784,7 @@ impl<'a> ObjectsBuilder<'a> {
                     ld.0.into_iter()
                         .map(|mut ln| {
                             ln.scale(self.scale_fact.x, self.scale_fact.y);
-                            
+
                             ln.x1 += self.offset.x;
                             ln.y1 -= self.offset.y;
 
