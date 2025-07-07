@@ -532,35 +532,37 @@ impl<'a> ObjectsBuilder<'a> {
     }
 
     #[allow(clippy::too_many_lines)]
-    #[instrument]
     pub fn build(self) -> Result<Objects, &'static str /*add better error later*/> {
         match &self.ent.specific {
             EntityType::Circle(circle) => {
                 let mut ellipse: Ellipse = circle.into();
 
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
                 ellipse.x += self.offset.x;
                 ellipse.y -= self.offset.y;
-                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
                 Ok(Objects::Ellipse(ellipse))
             }
             EntityType::Line(line) => {
                 let mut line: Line = line.into();
+
+                line.scale(self.scale_fact.x, self.scale_fact.y);
 
                 line.x1 += self.offset.x;
                 line.y1 -= self.offset.y;
 
                 line.x2 += self.offset.x;
                 line.y2 -= self.offset.y;
-                line.scale(self.scale_fact.x, self.scale_fact.y);
+                
 
                 Ok(Objects::Line(line))
             }
             EntityType::Arc(arc) => {
                 let mut arc: Arc = arc.into();
 
+                arc.scale(self.scale_fact.x, self.scale_fact.y);
+
                 arc.x += self.offset.x;
                 arc.y -= self.offset.y;
-                arc.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Arc(arc))
             }
@@ -573,11 +575,11 @@ impl<'a> ObjectsBuilder<'a> {
                     //to make sure I do this correctly.
                     //2 => //convert to line
                     _ => {
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
                         for cord in &mut poly.coordinates {
                             cord.x += self.offset.x;
                             cord.y -= self.offset.y;
                         }
-                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -599,9 +601,10 @@ impl<'a> ObjectsBuilder<'a> {
                         )
                             .into();
 
+                        text.scale(self.scale_fact.x, self.scale_fact.y);
+
                         text.x += self.offset.x;
                         text.y -= self.offset.y;
-                        text.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Objects::Text(text)
                     } else {
@@ -609,9 +612,11 @@ impl<'a> ObjectsBuilder<'a> {
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
 
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
                         dtext.x += self.offset.x;
                         dtext.y -= self.offset.y;
-                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
+                        
 
                         Objects::DynamicText(dtext)
                     },
@@ -620,9 +625,9 @@ impl<'a> ObjectsBuilder<'a> {
             EntityType::Ellipse(ellipse) => {
                 let mut ellipse: Ellipse = ellipse.into();
 
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
                 ellipse.x += self.offset.x;
                 ellipse.y -= self.offset.y;
-                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Ellipse(ellipse))
             }
@@ -647,9 +652,10 @@ impl<'a> ObjectsBuilder<'a> {
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
 
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
                         dtext.x += self.offset.x;
                         dtext.y -= self.offset.y;
-                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Objects::DynamicText(dtext)
                     },
@@ -660,30 +666,33 @@ impl<'a> ObjectsBuilder<'a> {
                 2 => {
                     let mut line = Line::try_from(polyline)?;
 
+                    line.scale(self.scale_fact.x, self.scale_fact.x);
+
                     line.x1 += self.offset.x;
                     line.y1 -= self.offset.y;
 
                     line.x2 += self.offset.x;
                     line.y2 -= self.offset.y;
-                    line.scale(self.scale_fact.x, self.scale_fact.x);
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(polyline) {
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+
                         ellipse.x += self.offset.x;
                         ellipse.y -= self.offset.y;
-                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = polyline.into();
 
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
+                        
                         for cord in &mut poly.coordinates {
                             cord.x += self.offset.x;
                             cord.y -= self.offset.y;
                         }
-                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -694,30 +703,33 @@ impl<'a> ObjectsBuilder<'a> {
                 2 => {
                     let mut line = Line::try_from(lwpolyline)?;
 
+                    line.scale(self.scale_fact.x, self.scale_fact.y);
+
                     line.x1 += self.offset.x;
                     line.y1 -= self.offset.y;
 
                     line.x2 += self.offset.x;
                     line.y2 -= self.offset.y;
-                    line.scale(self.scale_fact.x, self.scale_fact.y);
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(lwpolyline) {
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+                        
                         ellipse.x += self.offset.x;
                         ellipse.y -= self.offset.y;
-                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = lwpolyline.into();
 
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
+
                         for cord in &mut poly.coordinates {
                             cord.x += self.offset.x;
                             cord.y -= self.offset.y;
                         }
-                        poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                         Ok(Objects::Polygon(poly))
                     }
@@ -726,11 +738,12 @@ impl<'a> ObjectsBuilder<'a> {
             EntityType::Solid(solid) => {
                 let mut poly: Polygon = solid.into();
 
+                poly.scale(self.scale_fact.x, self.scale_fact.y);
+
                 for cord in &mut poly.coordinates {
                     cord.x += self.offset.x;
                     cord.y -= self.offset.y;
                 }
-                poly.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Ok(Objects::Polygon(poly))
             }
@@ -751,7 +764,7 @@ impl<'a> ObjectsBuilder<'a> {
                         .iter()
                         .filter_map(|ent| {
                             ObjectsBuilder::new(ent, self.spline_step)
-                                .offsets(self.offset.x, self.offset.y)
+                                .offsets(self.offset.x + ins.location.x, self.offset.y + ins.location.y)
                                 .scaling(
                                     self.scale_fact.x * ins.x_scale_factor,
                                     self.scale_fact.y * ins.y_scale_factor,
@@ -769,13 +782,13 @@ impl<'a> ObjectsBuilder<'a> {
                 Ok(Objects::Group(
                     ld.0.into_iter()
                         .map(|mut ln| {
+                            ln.scale(self.scale_fact.x, self.scale_fact.y);
+                            
                             ln.x1 += self.offset.x;
                             ln.y1 -= self.offset.y;
 
                             ln.x2 += self.offset.x;
                             ln.y2 -= self.offset.y;
-
-                            ln.scale(self.scale_fact.x, self.scale_fact.y);
 
                             Objects::Line(ln)
                         })
@@ -788,9 +801,10 @@ impl<'a> ObjectsBuilder<'a> {
                     .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                     .build();
 
+                dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
                 dtext.x += self.offset.x;
                 dtext.y -= self.offset.y;
-                dtext.scale(self.scale_fact.x, self.scale_fact.y);
 
                 Objects::DynamicText(dtext)
             }),
