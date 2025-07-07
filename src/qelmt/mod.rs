@@ -11,7 +11,7 @@ use std::f64::consts::PI;
 use std::fmt::Display;
 use uuid::Uuid;
 
-use tracing::{error, info, instrument, span, trace, warn, Level};
+use tracing::{error, info, span, trace, warn, Level};
 
 pub mod arc;
 pub use arc::Arc;
@@ -505,8 +505,8 @@ impl<'a> ObjectsBuilder<'a> {
             ent,
             spline_step,
             blocks: &[],
-            offset: Default::default(),
-            scale_fact: Default::default(),
+            offset:  Offset::default(),
+            scale_fact: ScaleFactor::default(),
         }
     }
 
@@ -945,7 +945,7 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
-        let from_drw_span = span!(Level::TRACE, "Converting Drawing to Description");
+        let _from_drw_span = span!(Level::TRACE, "Converting Drawing to Description");
 
         Self {
             objects: drw
