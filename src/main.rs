@@ -19,8 +19,7 @@ use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
 use tracing::{error, info, instrument, span, trace, warn, Level};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{filter, prelude::*};
 
 #[cfg(feature = "venator")]
 use venator::Venator;
@@ -54,18 +53,27 @@ struct Args {
 
 pub mod file_writer;
 
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
     #[cfg(feature = "venator")]
-    tracing_subscriber::registry()
+    let tr_reg = tracing_subscriber::registry()
         .with(Venator::default())
-        .with(tracing_subscriber::fmt::Layer::default())
-        //.with(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
+        .with(tracing_subscriber::fmt::Layer::default());
 
     #[cfg(not(feature = "venator"))]
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::Layer::default())
-        .init();
+    let tr_reg = {
+        let file = std::fs::File::create("dxf2elmt.log").unwrap();
+        let debug_log = tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file));
+        tracing_subscriber::registry().with(
+            debug_log
+                .with_file(true)
+                .with_line_number(true)
+                .with_thread_ids(true)
+                .with_ansi(false)
+                .with_filter(tracing_subscriber::EnvFilter::from_env("DXF2E_LOG")),
+        )
+    };
+    tr_reg.init();
 
     trace!("Starting dxf2elmt");
 

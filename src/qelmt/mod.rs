@@ -91,7 +91,7 @@ trait Circularity {
         //I'm using this function that defaults to a constant range of 2%
         //Then I could also easily overwrite it if I wanted to change the tolerance
         //for a specific type
-        (0.98..=1.02)
+        0.98..=1.02
     }
 }
 
