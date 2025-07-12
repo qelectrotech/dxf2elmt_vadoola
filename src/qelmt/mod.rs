@@ -752,6 +752,7 @@ impl<'a> ObjectsBuilder<'a> {
                     error!("Block {} not found", ins.name);
                     return Err("Block Not Found");
                 };
+                trace!("Base Point: x: {} / y: {}", block.base_point.x, block.base_point.y);
 
                 trace!("Creating Group from block {}. Pos(x:{}, y:{}). Offset(x:{}, y:{}). Scale(x:{}, y:{})",
                     ins.name, ins.location.x, ins.location.y, self.offset.x, self.offset.y, self.scale_fact.x * ins.x_scale_factor,
@@ -763,8 +764,8 @@ impl<'a> ObjectsBuilder<'a> {
                         .filter_map(|ent| {
                             ObjectsBuilder::new(ent, self.spline_step)
                                 .offsets(
-                                    self.offset.x + ins.location.x,
-                                    self.offset.y + ins.location.y,
+                                    ins.location.x - block.base_point.x,
+                                    ins.location.y - block.base_point.y,
                                 )
                                 .scaling(
                                     self.scale_fact.x * ins.x_scale_factor,
@@ -926,6 +927,9 @@ impl From<&Description> for XMLElement {
     fn from(desc: &Description) -> Self {
         let mut desc_xml = XMLElement::new("description");
         for obj in &desc.objects {
+            if let Ok(elem) = XMLElement::try_from(obj) {
+                desc_xml.add_child(elem);
+            }
             for obj in obj.descendants() {
                 if let Ok(elem) = XMLElement::try_from(obj) {
                     desc_xml.add_child(elem);
@@ -953,8 +957,6 @@ impl From<(&Drawing, u32)> for Description {
                 .filter_map(|ent| match &ent.specific {
                     EntityType::Insert(ins) => {
                         let block = find_block(drw, &ins.name)?;
-                        let offset_x = ins.location.x;
-                        let offset_y = ins.location.y;
                         let blocks: Vec<&Block> = drw.blocks().collect();
                         trace!(
                             "Creating Group from block {}. Pos(x:{}, y:{}). Scale(x:{}, y:{})",
@@ -973,7 +975,7 @@ impl From<(&Drawing, u32)> for Description {
                                         //very confused here, in one test file if I leave out the ins locations here it puts things in the
                                         //wrong location, and puts them in the correct location when I add the ins location in.
                                         //but in another file it's the opposite, not sure why the difference...
-                                        .offsets(offset_x, offset_y)
+                                        .offsets(ins.location.x, ins.location.y)
                                         .scaling(ins.x_scale_factor, ins.y_scale_factor)
                                         .blocks(&blocks)
                                         .build()
