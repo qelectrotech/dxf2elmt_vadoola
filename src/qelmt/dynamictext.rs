@@ -1,5 +1,5 @@
 use super::{two_dec, FontInfo, ScaleEntity, TextEntity};
-use dxf::entities;
+use dxf::entities::{self, AttributeDefinition};
 use hex_color::HexColor;
 use simple_xml_builder::XMLElement;
 use unicode_segmentation::UnicodeSegmentation;
@@ -111,11 +111,11 @@ impl From<&DynamicText> for XMLElement {
 }
 
 impl ScaleEntity for DynamicText {
-    fn scale(&mut self, fact: f64) {
-        self.x *= fact;
-        self.y *= fact;
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
         //self.font.pixel_size *= fact;
-        self.font.point_size *= fact;
+        self.font.point_size *= fact_x;
     }
 
     fn left_bound(&self) -> f64 {
@@ -153,6 +153,13 @@ impl<'a> DTextBuilder<'a> {
     pub fn from_mtext(text: &'a entities::MText) -> Self {
         Self {
             text: TextEntity::MText(text),
+            color: None,
+        }
+    }
+
+    pub fn from_attrib(attrib: &'a AttributeDefinition) -> Self {
+        Self {
+            text: TextEntity::Attrib(attrib),
             color: None,
         }
     }
@@ -208,10 +215,32 @@ impl<'a> DTextBuilder<'a> {
                 //I edited one of them in QCad, and added a few lines. The value came through in the text field
                 //with extended_text being empty, and the newlines were deliniated by '\\P'...I might need to look
                 //the spec a bit to determine what it says for MTEXT, but for now, I'll just assume this is correct
-                mtxt.text.replace("\\P", "\n"),
+                //So looking at the spec, yes '\P' is the MTEXT newline essentially. There is a bunch of MTEXT
+                //inline codes that can be found at https://ezdxf.readthedocs.io/en/stable/dxfentities/mtext.html
+                //The extended text is code point 3 in the dxf spec which just says: "Additional text (always in 250-character chunks) (optional)"
+                //and Code point 1 the normal text value says: "Text string. If the text string is less than 250 characters, all characters appear
+                //in group 1. If the text string is greater than 250 characters, the string is divided into 250-character chunks, which appear in
+                //one or more group 3 codes. If group 3 codes are used, the last group is a group 1 and has fewer than 250 characters"
+                {
+                    let mut val = mtxt.extended_text.join("");
+                    val.push_str(&mtxt.text);
+                    val.replace("\\P", "\n")
+                },
                 HAlignment::from(mtxt.attachment_point),
                 VAlignment::from(mtxt.attachment_point),
                 mtxt.reference_rectangle_width,
+            ),
+            TextEntity::Attrib(attrib) => (
+                attrib.location.x,
+                -attrib.location.y,
+                attrib.location.z,
+                attrib.rotation,
+                &attrib.text_style_name,
+                attrib.text_height,
+                attrib.value.clone(),
+                HAlignment::from(attrib.horizontal_text_justification),
+                VAlignment::from(attrib.vertical_text_justification),
+                0.0, // as Placeholder: not need to check if Attrib has something similar
             ),
         };
 

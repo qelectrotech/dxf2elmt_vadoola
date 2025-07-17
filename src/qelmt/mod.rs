@@ -1,7 +1,7 @@
-use dxf::entities::{Entity, EntityType};
+use dxf::entities::{AttributeDefinition, Entity, EntityType};
 use dxf::entities::{LwPolyline, Polyline};
 use dxf::enums::{AttachmentPoint, HorizontalTextJustification, Units, VerticalTextJustification};
-use dxf::Drawing;
+use dxf::{Block, Drawing};
 use dynamictext::DTextBuilder;
 use hex_color::HexColor;
 use itertools::Itertools;
@@ -10,6 +10,8 @@ use std::convert::TryFrom;
 use std::f64::consts::PI;
 use std::fmt::Display;
 use uuid::Uuid;
+
+use tracing::{error, info, span, trace, warn, Level};
 
 pub mod arc;
 pub use arc::Arc;
@@ -28,6 +30,17 @@ pub use polygon::Polygon;
 
 pub mod ellipse;
 pub use ellipse::Ellipse;
+
+fn find_block<'a>(drw: &'a Drawing, name: &str) -> Option<&'a Block> {
+    //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
+    //blocks out of the drawing it works.
+    //I mean would this ever return more than 1? I would assume block names have to be unique?
+    //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
+    //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
+    //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
+    //an entity? So I don't think there is any easy way to get the handle
+    drw.blocks().filter(|bl| bl.name == name).take(1).next()
+}
 
 #[derive(Debug)]
 enum Either<L, R> {
@@ -54,11 +67,12 @@ pub struct Definition {
 
 //Since the ScaleEntity trait was added to all the objects/elements
 //and I need to add the get bounds to all it probably makes sense to have
+
 //them all within the same trait instead of multiple traits, as a collective
 //set of functions needed by the objects...but I should probably come up with
 //a better trait name then. For now I'll leave it and just get the code working
 trait ScaleEntity {
-    fn scale(&mut self, fact: f64);
+    fn scale(&mut self, fact_x: f64, fact_y: f64);
 
     fn left_bound(&self) -> f64;
     fn right_bound(&self) -> f64;
@@ -69,6 +83,16 @@ trait ScaleEntity {
 
 trait Circularity {
     fn is_circular(&self) -> bool;
+
+    fn match_range() -> std::ops::RangeInclusive<f64> {
+        //this boundary of 2% has been chosen arbitrarily, I might adjust this later
+        //I know in one of my sample files, I'm getting a value of 0.99....
+        //since Associated Constants in a trait can't have a default value
+        //I'm using this function that defaults to a constant range of 2%
+        //Then I could also easily overwrite it if I wanted to change the tolerance
+        //for a specific type
+        0.98..=1.02
+    }
 }
 
 impl Circularity for Polyline {
@@ -103,7 +127,7 @@ impl Circularity for Polyline {
         };
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
-        (0.98..=1.02).contains(&t_ratio)
+        Self::match_range().contains(&t_ratio)
     }
 }
 
@@ -134,9 +158,7 @@ impl Circularity for LwPolyline {
         };
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
-        //this boundary of 2% has been chosen arbitrarily, I might adjust this later
-        //I know in on of my sample files, I'm getting a value of 0.99....
-        (0.98..=1.02).contains(&t_ratio)
+        Self::match_range().contains(&t_ratio)
     }
 }
 
@@ -148,7 +170,7 @@ impl Definition {
         let scale_factor = Self::scale_factor(drw.header.default_drawing_units);
         let description = {
             let mut description: Description = (drw, spline_step).into();
-            description.scale(scale_factor);
+            description.scale(scale_factor, scale_factor);
             description
         };
 
@@ -284,19 +306,72 @@ pub(crate) enum Objects {
     Text(Text),
     Line(Line),
     //Terminal(Terminal),
-    Block(Vec<Objects>),
+    Group(Vec<Objects>),
+}
+
+impl Objects {
+    pub fn descendants(&self) -> Descendants<'_> {
+        Descendants {
+            stack: vec![self.children()],
+        }
+    }
+
+    pub fn children(&self) -> Children<'_> {
+        match self {
+            Objects::Group(l) => Children { slice: l.iter() },
+            _ => Children { slice: [].iter() },
+        }
+    }
+}
+
+pub(crate) struct Descendants<'a> {
+    stack: Vec<Children<'a>>,
+}
+
+impl<'a> Iterator for Descendants<'a> {
+    type Item = &'a Objects;
+    fn next(&mut self) -> Option<Self::Item> {
+        //let iter_span = span!(Level::TRACE, "Iterating Object Descendants");
+        //let _span_guard = iter_span.enter();
+        while let Some(last) = self.stack.last_mut() {
+            if let Some(obj) = last.next() {
+                //trace!("Found more children");
+                self.stack.push(obj.children());
+                return Some(obj);
+            } else {
+                //trace!("No more children");
+                self.stack.pop();
+            }
+        }
+        None
+    }
+}
+
+pub(crate) struct Children<'a> {
+    slice: std::slice::Iter<'a, Objects>,
+}
+
+impl<'a> Iterator for Children<'a> {
+    type Item = &'a Objects;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.slice.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.slice.len(), None)
+    }
 }
 
 impl ScaleEntity for Objects {
-    fn scale(&mut self, fact: f64) {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
         match self {
-            Objects::Arc(arc) => arc.scale(fact),
-            Objects::Ellipse(ellipse) => ellipse.scale(fact),
-            Objects::Polygon(polygon) => polygon.scale(fact),
-            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact),
-            Objects::Text(text) => text.scale(fact),
-            Objects::Line(line) => line.scale(fact),
-            Objects::Block(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact)),
+            Objects::Arc(arc) => arc.scale(fact_x, fact_y),
+            Objects::Ellipse(ellipse) => ellipse.scale(fact_x, fact_y),
+            Objects::Polygon(polygon) => polygon.scale(fact_x, fact_y),
+            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact_x, fact_y),
+            Objects::Text(text) => text.scale(fact_x, fact_y),
+            Objects::Line(line) => line.scale(fact_x, fact_y),
+            Objects::Group(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
         }
     }
 
@@ -308,7 +383,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.left_bound(),
             Objects::Text(text) => text.left_bound(),
             Objects::Line(line) => line.left_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let lb = vec.iter().min_by(|ob1, ob2| {
                     ob1.left_bound()
                         .partial_cmp(&ob2.left_bound())
@@ -332,7 +407,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.right_bound(),
             Objects::Text(text) => text.right_bound(),
             Objects::Line(line) => line.right_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let rb = vec.iter().max_by(|ob1, ob2| {
                     ob1.right_bound()
                         .partial_cmp(&ob2.right_bound())
@@ -356,7 +431,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.top_bound(),
             Objects::Text(text) => text.top_bound(),
             Objects::Line(line) => line.top_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let tb = vec.iter().min_by(|ob1, ob2| {
                     ob1.top_bound()
                         .partial_cmp(&ob2.top_bound())
@@ -380,7 +455,7 @@ impl ScaleEntity for Objects {
             Objects::DynamicText(dynamic_text) => dynamic_text.bot_bound(),
             Objects::Text(text) => text.bot_bound(),
             Objects::Line(line) => line.bot_bound(),
-            Objects::Block(vec) => {
+            Objects::Group(vec) => {
                 let bb = vec.iter().max_by(|ob1, ob2| {
                     ob1.bot_bound()
                         .partial_cmp(&ob2.bot_bound())
@@ -397,11 +472,31 @@ impl ScaleEntity for Objects {
     }
 }
 
+#[derive(Debug)]
+struct ScaleFactor {
+    x: f64,
+    y: f64,
+}
+
+impl Default for ScaleFactor {
+    fn default() -> Self {
+        ScaleFactor { x: 1.0, y: 1.0 }
+    }
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct Offset {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Debug)]
 pub struct ObjectsBuilder<'a> {
     ent: &'a Entity,
     spline_step: u32,
-    offset_x: Option<f64>,
-    offset_y: Option<f64>,
+    blocks: &'a [&'a Block],
+    offset: Offset,
+    scale_fact: ScaleFactor,
 }
 
 impl<'a> ObjectsBuilder<'a> {
@@ -409,43 +504,64 @@ impl<'a> ObjectsBuilder<'a> {
         Self {
             ent,
             spline_step,
-            offset_x: None,
-            offset_y: None,
+            blocks: &[],
+            offset:  Offset::default(),
+            scale_fact: ScaleFactor::default(),
         }
     }
 
-    pub fn offsets(self, offset_x: f64, offset_y: f64) -> Self {
+    pub fn blocks(self, blocks: &'a [&'a Block]) -> Self {
+        Self { blocks, ..self }
+    }
+
+    pub fn offsets(self, x: f64, y: f64) -> Self {
         Self {
-            offset_x: Some(offset_x),
-            offset_y: Some(offset_y),
+            offset: Offset { x, y },
             ..self
         }
     }
 
+    pub fn scaling(self, fact_x: f64, fact_y: f64) -> Self {
+        Self {
+            scale_fact: ScaleFactor {
+                x: fact_x,
+                y: fact_y,
+            },
+            ..self
+        }
+    }
+
+    #[allow(clippy::too_many_lines)]
     pub fn build(self) -> Result<Objects, &'static str /*add better error later*/> {
-        let offset_x = self.offset_x.unwrap_or(0.0);
-        let offset_y = self.offset_y.unwrap_or(0.0);
         match &self.ent.specific {
             EntityType::Circle(circle) => {
                 let mut ellipse: Ellipse = circle.into();
-                ellipse.x += offset_x;
-                ellipse.y -= offset_y;
+
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+                ellipse.x += self.offset.x;
+                ellipse.y -= self.offset.y;
                 Ok(Objects::Ellipse(ellipse))
             }
             EntityType::Line(line) => {
                 let mut line: Line = line.into();
-                line.x1 += offset_x;
-                line.y1 -= offset_y;
 
-                line.x2 += offset_x;
-                line.y2 -= offset_y;
+                line.scale(self.scale_fact.x, self.scale_fact.y);
+
+                line.x1 += self.offset.x;
+                line.y1 -= self.offset.y;
+
+                line.x2 += self.offset.x;
+                line.y2 -= self.offset.y;
 
                 Ok(Objects::Line(line))
             }
             EntityType::Arc(arc) => {
                 let mut arc: Arc = arc.into();
-                arc.x += offset_x;
-                arc.y -= offset_y;
+
+                arc.scale(self.scale_fact.x, self.scale_fact.y);
+
+                arc.x += self.offset.x;
+                arc.y -= self.offset.y;
 
                 Ok(Objects::Arc(arc))
             }
@@ -458,10 +574,12 @@ impl<'a> ObjectsBuilder<'a> {
                     //to make sure I do this correctly.
                     //2 => //convert to line
                     _ => {
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+
                         Ok(Objects::Polygon(poly))
                     }
                 }
@@ -481,23 +599,34 @@ impl<'a> ObjectsBuilder<'a> {
                             HexColor::from_u32(self.ent.common.color_24_bit as u32),
                         )
                             .into();
-                        text.x += offset_x;
-                        text.y -= offset_y;
+
+                        text.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        text.x += self.offset.x;
+                        text.y -= self.offset.y;
+
                         Objects::Text(text)
                     } else {
                         let mut dtext = DTextBuilder::from_text(text)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
-                        dtext.x += offset_x;
-                        dtext.y -= offset_y;
+
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        dtext.x += self.offset.x;
+                        dtext.y -= self.offset.y;
+
                         Objects::DynamicText(dtext)
                     },
                 )
             }
             EntityType::Ellipse(ellipse) => {
                 let mut ellipse: Ellipse = ellipse.into();
-                ellipse.x += offset_x;
-                ellipse.y -= offset_y;
+
+                ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+                ellipse.x += self.offset.x;
+                ellipse.y -= self.offset.y;
+
                 Ok(Objects::Ellipse(ellipse))
             }
             EntityType::MText(mtext) => {
@@ -520,8 +649,12 @@ impl<'a> ObjectsBuilder<'a> {
                         let mut dtext = DTextBuilder::from_mtext(mtext)
                             .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
                             .build();
-                        dtext.x += offset_x;
-                        dtext.y -= offset_y;
+
+                        dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        dtext.x += self.offset.x;
+                        dtext.y -= self.offset.y;
+
                         Objects::DynamicText(dtext)
                     },
                 )
@@ -530,25 +663,35 @@ impl<'a> ObjectsBuilder<'a> {
                 0 | 1 => Err("Error empty Polyline"),
                 2 => {
                     let mut line = Line::try_from(polyline)?;
-                    line.x1 += offset_x;
-                    line.y1 -= offset_y;
 
-                    line.x2 += offset_x;
-                    line.y2 -= offset_y;
+                    line.scale(self.scale_fact.x, self.scale_fact.x);
+
+                    line.x1 += self.offset.x;
+                    line.y1 -= self.offset.y;
+
+                    line.x2 += self.offset.x;
+                    line.y2 -= self.offset.y;
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(polyline) {
-                        ellipse.x += offset_x;
-                        ellipse.y -= offset_y;
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        ellipse.x += self.offset.x;
+                        ellipse.y -= self.offset.y;
+
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = polyline.into();
+
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
+
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+
                         Ok(Objects::Polygon(poly))
                     }
                 }
@@ -557,25 +700,35 @@ impl<'a> ObjectsBuilder<'a> {
                 0 | 1 => Err("Error empty LwPolyline"),
                 2 => {
                     let mut line = Line::try_from(lwpolyline)?;
-                    line.x1 += offset_x;
-                    line.y1 -= offset_y;
 
-                    line.x2 += offset_x;
-                    line.y2 -= offset_y;
+                    line.scale(self.scale_fact.x, self.scale_fact.y);
+
+                    line.x1 += self.offset.x;
+                    line.y1 -= self.offset.y;
+
+                    line.x2 += self.offset.x;
+                    line.y2 -= self.offset.y;
 
                     Ok(Objects::Line(line))
                 }
                 _ => {
                     if let Ok(mut ellipse) = Ellipse::try_from(lwpolyline) {
-                        ellipse.x += offset_x;
-                        ellipse.y -= offset_y;
+                        ellipse.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        ellipse.x += self.offset.x;
+                        ellipse.y -= self.offset.y;
+
                         Ok(Objects::Ellipse(ellipse))
                     } else {
                         let mut poly: Polygon = lwpolyline.into();
+
+                        poly.scale(self.scale_fact.x, self.scale_fact.y);
+
                         for cord in &mut poly.coordinates {
-                            cord.x += offset_x;
-                            cord.y -= offset_y;
+                            cord.x += self.offset.x;
+                            cord.y -= self.offset.y;
                         }
+
                         Ok(Objects::Polygon(poly))
                     }
                 }
@@ -583,31 +736,82 @@ impl<'a> ObjectsBuilder<'a> {
             EntityType::Solid(solid) => {
                 let mut poly: Polygon = solid.into();
 
+                poly.scale(self.scale_fact.x, self.scale_fact.y);
+
                 for cord in &mut poly.coordinates {
-                    cord.x += offset_x;
-                    cord.y -= offset_y;
+                    cord.x += self.offset.x;
+                    cord.y -= self.offset.y;
                 }
+
                 Ok(Objects::Polygon(poly))
             }
-            //need to add support for nested blocks here....
+            EntityType::Insert(ins) => {
+                //info!("Found an Insert Block: {ins:?}");
+                info!("Found an Insert Block: {}", &ins.name);
+                let Some(block) = self.blocks.iter().find(|bl| bl.name == ins.name) else {
+                    error!("Block {} not found", ins.name);
+                    return Err("Block Not Found");
+                };
+                trace!("Base Point: x: {} / y: {}", block.base_point.x, block.base_point.y);
+
+                trace!("Creating Group from block {}. Pos(x:{}, y:{}). Offset(x:{}, y:{}). Scale(x:{}, y:{})",
+                    ins.name, ins.location.x, ins.location.y, self.offset.x, self.offset.y, self.scale_fact.x * ins.x_scale_factor,
+                    self.scale_fact.y * ins.y_scale_factor);
+                Ok(Objects::Group(
+                    block
+                        .entities
+                        .iter()
+                        .filter_map(|ent| {
+                            ObjectsBuilder::new(ent, self.spline_step)
+                                .offsets(
+                                    ins.location.x - block.base_point.x,
+                                    ins.location.y - block.base_point.y,
+                                )
+                                .scaling(
+                                    self.scale_fact.x * ins.x_scale_factor,
+                                    self.scale_fact.y * ins.y_scale_factor,
+                                )
+                                .blocks(self.blocks)
+                                .build()
+                                .ok()
+                        })
+                        .collect(),
+                ))
+            }
             EntityType::Leader(leader) => {
                 let ld: Leader = leader.into();
 
-                Ok(Objects::Block(
+                Ok(Objects::Group(
                     ld.0.into_iter()
                         .map(|mut ln| {
-                            ln.x1 += offset_x;
-                            ln.y1 -= offset_y;
+                            ln.scale(self.scale_fact.x, self.scale_fact.y);
 
-                            ln.x2 += offset_x;
-                            ln.y2 -= offset_y;
+                            ln.x1 += self.offset.x;
+                            ln.y1 -= self.offset.y;
+
+                            ln.x2 += self.offset.x;
+                            ln.y2 -= self.offset.y;
+
                             Objects::Line(ln)
                         })
                         .collect(),
                 ))
             }
+            EntityType::AttributeDefinition(attrib) => Ok({
+                //need to look up the proper way to get the color for the Attrib
+                let mut dtext = DTextBuilder::from_attrib(attrib)
+                    .color(HexColor::from_u32(self.ent.common.color_24_bit as u32))
+                    .build();
+
+                dtext.scale(self.scale_fact.x, self.scale_fact.y);
+
+                dtext.x += self.offset.x;
+                dtext.y -= self.offset.y;
+
+                Objects::DynamicText(dtext)
+            }),
             _ => {
-                //dbg!(&ent.specific);
+                //dbg!(&self.ent.specific);
                 Err("Need to implement the rest of the entity types")
             }
         }
@@ -623,9 +827,10 @@ impl From<&Objects> for Either<XMLElement, Vec<XMLElement>> {
             Objects::DynamicText(dtext) => Either::Left(dtext.into()),
             Objects::Text(txt) => Either::Left(txt.into()),
             Objects::Line(line) => Either::Left(line.into()),
-            Objects::Block(block) => Either::Right(
+            Objects::Group(block) => Either::Right(
                 block
                     .iter()
+                    //.flatten()
                     .filter_map(|obj| XMLElement::try_from(obj).ok())
                     .collect(),
             ),
@@ -644,7 +849,7 @@ impl TryFrom<&Objects> for XMLElement {
             Objects::DynamicText(dtext) => Ok(dtext.into()),
             Objects::Text(txt) => Ok(txt.into()),
             Objects::Line(line) => Ok(line.into()),
-            _ => Err("Unsupported"),
+            Objects::Group(_) => Err("Unsupported"),
         }
     }
 }
@@ -655,8 +860,10 @@ pub struct Description {
 }
 
 impl ScaleEntity for Description {
-    fn scale(&mut self, fact: f64) {
-        self.objects.iter_mut().for_each(|ob| ob.scale(fact));
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.objects
+            .iter_mut()
+            .for_each(|ob| ob.scale(fact_x, fact_y));
     }
 
     fn left_bound(&self) -> f64 {
@@ -720,9 +927,13 @@ impl From<&Description> for XMLElement {
     fn from(desc: &Description) -> Self {
         let mut desc_xml = XMLElement::new("description");
         for obj in &desc.objects {
-            match obj.into() {
-                Either::Left(elem) => desc_xml.add_child(elem),
-                Either::Right(vec) => vec.into_iter().for_each(|elem| desc_xml.add_child(elem)),
+            if let Ok(elem) = XMLElement::try_from(obj) {
+                desc_xml.add_child(elem);
+            }
+            for obj in obj.descendants() {
+                if let Ok(elem) = XMLElement::try_from(obj) {
+                    desc_xml.add_child(elem);
+                }
             }
         }
         desc_xml
@@ -738,44 +949,42 @@ impl From<&Description> for XMLElement {
 }*/
 impl From<(&Drawing, u32)> for Description {
     fn from((drw, spline_step): (&Drawing, u32)) -> Self {
-        //let txt_scale_fact = text_to_pt_scaling(drw.header.default_drawing_units);
+        let _from_drw_span = span!(Level::TRACE, "Converting Drawing to Description");
 
         Self {
             objects: drw
                 .entities()
-                .filter_map(|ent| {
-                    match &ent.specific {
-                        EntityType::Insert(ins) => {
-                            //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
-                            //blocks out of the drawing it works.
-                            //I mean would this ever return more than 1? I would assume block names have to be unique?
-                            //but maybe not, the blocks have a handle, which is a u64. There is a get by handle function
-                            //but not a get by name function....maybe the handle is what is unique and there can be duplicate names?
-                            //a quick glance through the dxf code it looks like the handle might be given to the library user when inserting
-                            //and entity? So I don't think there is any easy way to get the handle
-                            let block = drw
-                                .blocks()
-                                .filter(|bl| bl.name == ins.name)
-                                .take(1)
-                                .next()?; //if no block with this name is found return none and the item just gets skipped
-                            let offset_x = ins.location.x;
-                            let offset_y = ins.location.y;
-
-                            Some(Objects::Block(
-                                block
-                                    .entities
-                                    .iter()
-                                    .filter_map(|ent| {
-                                        ObjectsBuilder::new(ent, spline_step)
-                                            .offsets(offset_x, offset_y)
-                                            .build()
-                                            .ok()
-                                    })
-                                    .collect(),
-                            ))
-                        }
-                        _ => ObjectsBuilder::new(ent, spline_step).build().ok(),
+                .filter_map(|ent| match &ent.specific {
+                    EntityType::Insert(ins) => {
+                        let block = find_block(drw, &ins.name)?;
+                        let blocks: Vec<&Block> = drw.blocks().collect();
+                        trace!(
+                            "Creating Group from block {}. Pos(x:{}, y:{}). Scale(x:{}, y:{})",
+                            ins.name,
+                            ins.location.x,
+                            ins.location.y,
+                            ins.x_scale_factor,
+                            ins.y_scale_factor
+                        );
+                        Some(Objects::Group(
+                            block
+                                .entities
+                                .iter()
+                                .filter_map(|ent| {
+                                    ObjectsBuilder::new(ent, spline_step)
+                                        //very confused here, in one test file if I leave out the ins locations here it puts things in the
+                                        //wrong location, and puts them in the correct location when I add the ins location in.
+                                        //but in another file it's the opposite, not sure why the difference...
+                                        .offsets(ins.location.x, ins.location.y)
+                                        .scaling(ins.x_scale_factor, ins.y_scale_factor)
+                                        .blocks(&blocks)
+                                        .build()
+                                        .ok()
+                                })
+                                .collect(),
+                        ))
                     }
+                    _ => ObjectsBuilder::new(ent, spline_step).build().ok(),
                 })
                 .collect(),
         }
@@ -1078,22 +1287,22 @@ pub fn two_dec(num: f64) -> f64 {
     comma-separated list of the attributes, perfectly suited for use
     in QSettings, and consists of the following:
     \list
-      \li Font family
-      \li Point size
-      \li Pixel size
-      \li Style hint
-      \li Font weight
-      \li Font style
-      \li Underline
-      \li Strike out
-      \li Fixed pitch
-      \li Always \e{0}
-      \li Capitalization
-      \li Letter spacing
-      \li Word spacing
-      \li Stretch
-      \li Style strategy
-      \li Font style (omitted when unavailable)
+    \li Font family
+    \li Point size
+    \li Pixel size
+    \li Style hint
+    \li Font weight
+    \li Font style
+    \li Underline
+    \li Strike out
+    \li Fixed pitch
+    \li Always \e{0}
+    \li Capitalization
+    \li Letter spacing
+    \li Word spacing
+    \li Stretch
+    \li Style strategy
+    \li Font style (omitted when unavailable)
     \endlist
     \sa fromString()
  */
@@ -1232,4 +1441,5 @@ impl Display for FontInfo {
 enum TextEntity<'a> {
     Text(&'a dxf::entities::Text),
     MText(&'a dxf::entities::MText),
+    Attrib(&'a AttributeDefinition),
 }

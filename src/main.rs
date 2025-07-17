@@ -14,10 +14,16 @@ use clap::Parser;
 use dxf::entities::EntityType;
 use dxf::Drawing;
 use qelmt::Definition;
+//use rayon::prelude::*;
 use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
-//use rayon::prelude::*;
+use tracing::{error, info, instrument, span, trace, warn, Level};
+use tracing_subscriber::{prelude::*};
+
+#[cfg(feature = "venator")]
+use venator::Venator;
+
 mod qelmt;
 
 #[derive(Parser, Debug)]
@@ -47,7 +53,30 @@ struct Args {
 
 pub mod file_writer;
 
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<()> {
+    #[cfg(feature = "venator")]
+    let tr_reg = tracing_subscriber::registry()
+        .with(Venator::default())
+        .with(tracing_subscriber::fmt::Layer::default());
+
+    #[cfg(not(feature = "venator"))]
+    let tr_reg = {
+        let file = std::fs::File::create("dxf2elmt.log").unwrap();
+        let debug_log = tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file));
+        tracing_subscriber::registry().with(
+            debug_log
+                .with_file(true)
+                .with_line_number(true)
+                .with_thread_ids(true)
+                .with_ansi(false)
+                .with_filter(tracing_subscriber::EnvFilter::from_env("DXF2E_LOG")),
+        )
+    };
+    tr_reg.init();
+
+    trace!("Starting dxf2elmt");
+
     // Start recording time
     let now: Instant = Instant::now();
 
@@ -55,6 +84,8 @@ fn main() -> Result<()> {
     let args: Args = Args::parse_from(wild::args());
 
     // Load dxf file
+    let dxf_loop_span = span!(Level::TRACE, "Looping over dxf files");
+    let dxf_loop_guard = dxf_loop_span.enter();
     for file_name in args.file_names {
         let friendly_file_name = file_name
             .file_stem()
@@ -82,6 +113,7 @@ fn main() -> Result<()> {
         let mut other_count: u32 = 0;
 
         // Loop through all entities, counting the element types
+        //drawing.entities().for_each(|e| match e.specific {
         drawing.entities().for_each(|e| match e.specific {
             EntityType::Circle(ref _circle) => {
                 circle_count += 1;
@@ -149,9 +181,10 @@ fn main() -> Result<()> {
         }
 
         if args.verbose {
-            print!("{}", out_xml);
+            print!("{out_xml}");
         }
     }
+    drop(dxf_loop_guard);
 
     Ok(())
 }

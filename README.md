@@ -31,7 +31,7 @@ If you wish to forgo creating an .elmt file, you can use the "-v" argument for v
 * LwPolylines
 * Solids
 * Splines
-* Blocks
+* Blocks (there are still some known issues for deeply nested block)
 * MText (partial support)
 * Leader
 
@@ -46,7 +46,7 @@ If you wish to forgo creating an .elmt file, you can use the "-v" argument for v
 
 ## Compiling
 
-Compiled using Rust (MSRV 1.74.1).
+Compiled using Rust (MSRV 1.79.0).
 
 ## Credits
 
