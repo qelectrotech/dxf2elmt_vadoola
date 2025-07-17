@@ -11,7 +11,6 @@ pub struct Text {
     pub y: f64,
     font: FontInfo,
     color: HexColor,
-    reference_rectangle_width: f64,
 }
 
 impl From<(&entities::Text, HexColor)> for Text {
@@ -32,7 +31,6 @@ impl From<(&entities::Text, HexColor)> for Text {
                 FontInfo::default()
             },
             value: txt.value.clone(),
-            reference_rectangle_width: 0.0,
         }
     }
 }

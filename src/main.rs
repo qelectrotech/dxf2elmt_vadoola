@@ -18,7 +18,7 @@ use qelmt::Definition;
 use simple_xml_builder::XMLElement;
 use std::path::PathBuf;
 use std::time::Instant;
-use tracing::{error, info, instrument, span, trace, warn, Level};
+use tracing::{span, trace, warn, Level};
 use tracing_subscriber::prelude::*;
 
 #[cfg(feature = "venator")]

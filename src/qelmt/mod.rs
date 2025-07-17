@@ -11,7 +11,7 @@ use std::f64::consts::PI;
 use std::fmt::Display;
 use uuid::Uuid;
 
-use tracing::{error, info, span, trace, warn, Level};
+use tracing::{error, info, span, trace, Level};
 
 pub mod arc;
 pub use arc::Arc;
@@ -60,7 +60,7 @@ pub struct Definition {
     uuid: ElmtUuid,
     names: Names,
     element_infos: Option<ElemInfos>,
-    informations: Option<String>,
+    informations: &'static str,
     description: Description,
     //counts
 }
@@ -228,7 +228,7 @@ impl Definition {
                 }],
             },
             element_infos: None,
-            informations: Some("Created using dxf2elmt!".into()),
+            informations: "Created using dxf2elmt!",
             description,
         }
     }
@@ -283,12 +283,15 @@ impl From<&Definition> for XMLElement {
         def_xml.add_attribute("version", &def.version);
         def_xml.add_attribute("link_type", &def.link_type);
         def_xml.add_attribute("type", &def.r#type);
-        def_xml.add_child((&def.uuid).into());
 
+        def_xml.add_child((&def.uuid).into());
         def_xml.add_child((&def.names).into());
+        if let Some(einfos) = &def.element_infos {
+            def_xml.add_child(einfos.into());
+        }
 
         let mut info_elmt = XMLElement::new("informations");
-        info_elmt.add_text("Created using dxf2elmt!");
+        info_elmt.add_text(def.informations);
         def_xml.add_child(info_elmt);
 
         def_xml.add_child((&def.description).into());
@@ -338,10 +341,9 @@ impl<'a> Iterator for Descendants<'a> {
                 //trace!("Found more children");
                 self.stack.push(obj.children());
                 return Some(obj);
-            } else {
-                //trace!("No more children");
-                self.stack.pop();
             }
+
+            self.stack.pop();
         }
         None
     }
@@ -1252,6 +1254,17 @@ pub struct ElemInfos {
     elem_info: Vec<ElemInfo>,
 }
 
+impl From<&ElemInfos> for XMLElement {
+    fn from(elems: &ElemInfos) -> Self {
+        let mut elems_xml = XMLElement::new("elementInformations");
+        for elem in &elems.elem_info {
+            elems_xml.add_child(elem.into());
+        }
+
+        elems_xml
+    }
+}
+
 #[derive(Debug)]
 pub struct ElemInfo {
     //there seems to be a list in the editor with the following values (per the XML)
@@ -1274,6 +1287,17 @@ pub struct ElemInfo {
     show: i32,
 
     value: String,
+}
+
+impl From<&ElemInfo> for XMLElement {
+    fn from(elem: &ElemInfo) -> Self {
+        let mut elem_xml = XMLElement::new("elementInformation");
+        elem_xml.add_attribute("show", elem.show);
+        elem_xml.add_attribute("name", &elem.name);
+        elem_xml.add_text(&elem.value);
+
+        elem_xml
+    }
 }
 
 #[inline]
@@ -1331,16 +1355,16 @@ QString QFont::toString() const
     */
 
 #[derive(Debug)]
-enum FontStyleHint {
+pub enum FontStyleHint {
     Helvetica,
-    /*Times,
+    Times,
     Courier,
     OldEnglish,
     System,
     AnyStyle,
     Cursive,
     Monospace,
-    Fantasy,*/
+    Fantasy,
 }
 
 /*impl FontStyleHint {
@@ -1351,36 +1375,35 @@ enum FontStyleHint {
 }
 */
 
-impl Into<i32> for &FontStyleHint {
-    fn into(self) -> i32 {
-        match self {
+impl From<&FontStyleHint> for i32 {
+    fn from(value: &FontStyleHint) -> Self {
+        match value {
             FontStyleHint::Helvetica => 0,
-            /*FontStyleHint::Times => 1,
+            FontStyleHint::Times => 1,
             FontStyleHint::Courier => 2,
             FontStyleHint::OldEnglish => 3,
             FontStyleHint::System => 4,
             FontStyleHint::AnyStyle => 5,
             FontStyleHint::Cursive => 6,
             FontStyleHint::Monospace => 7,
-            FontStyleHint::Fantasy => 8,*/
+            FontStyleHint::Fantasy => 8,
         }
     }
 }
 
 #[derive(Debug)]
-enum FontStyle {
+pub enum FontStyle {
     Normal,
-    /*Italic,
-    Oblique,*/
+    Italic,
+    Oblique,
 }
 
-//wonder if it's worth doing From<> and 1 = italic, 2 = oblique anything else is Normal....
-impl Into<i32> for &FontStyle {
-    fn into(self) -> i32 {
-        match self {
+impl From<&FontStyle> for i32 {
+    fn from(value: &FontStyle) -> Self {
+        match value {
             FontStyle::Normal => 0,
-            /*FontStyle::Italic => 1,
-            FontStyle::Oblique => 2,*/
+            FontStyle::Italic => 1,
+            FontStyle::Oblique => 2,
         }
     }
 }
