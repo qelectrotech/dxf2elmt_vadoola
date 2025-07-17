@@ -505,7 +505,7 @@ impl<'a> ObjectsBuilder<'a> {
             ent,
             spline_step,
             blocks: &[],
-            offset:  Offset::default(),
+            offset: Offset::default(),
             scale_fact: ScaleFactor::default(),
         }
     }
@@ -752,7 +752,11 @@ impl<'a> ObjectsBuilder<'a> {
                     error!("Block {} not found", ins.name);
                     return Err("Block Not Found");
                 };
-                trace!("Base Point: x: {} / y: {}", block.base_point.x, block.base_point.y);
+                trace!(
+                    "Base Point: x: {} / y: {}",
+                    block.base_point.x,
+                    block.base_point.y
+                );
 
                 trace!("Creating Group from block {}. Pos(x:{}, y:{}). Offset(x:{}, y:{}). Scale(x:{}, y:{})",
                     ins.name, ins.location.x, ins.location.y, self.offset.x, self.offset.y, self.scale_fact.x * ins.x_scale_factor,
