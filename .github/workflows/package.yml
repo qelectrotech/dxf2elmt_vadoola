@@ -1,0 +1,79 @@
+name: Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu
+            arch: i386
+            target: i686-unknown-linux-gnu
+          - os: ubuntu
+            arch: armhf
+            target: armv7-unknown-linux-gnueabihf
+          - os: ubuntu
+            arch: amd64
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu
+            arch: arm64
+            target: aarch64-unknown-linux-gnu
+          - os: macos
+            arch: amd64
+            target: x86_64-apple-darwin
+          - os: macos
+            arch: arm64
+            target: aarch64-apple-darwin
+          - os: windows
+            arch: i386
+            target: i686-pc-windows-msvc
+          - os: windows
+            arch: amd64
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Check crate
+        if: matrix.os == 'macos' || matrix.os == 'windows' || matrix.os == 'ubuntu' && matrix.arch == 'amd64'
+        run: cargo publish --dry-run --target ${{ matrix.target }}
+
+      - name: Clippy (release mode)
+        run: cargo clippy --release -- -D warnings
+
+      - name: Test (release mode)
+        if: matrix.os == 'macos' || matrix.os == 'ubuntu' || matrix.os == 'windows' && matrix.arch == 'amd64'
+        run: |
+          cargo test --release --verbose -- --nocapture &&
+          cargo clean
+
+      - name: Install Cross
+        if: matrix.os == 'ubuntu'
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build binary (Linux)
+        if: matrix.os == 'ubuntu'
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build binary (macOS/Windows)
+        if: matrix.os == 'macos' || matrix.os == 'windows'
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}-${{ matrix.target }}
+          path: |
+            target/*/release/dxf2elmt
+            target/*/release/dxf2elmt.exe
+          if-no-files-found: error
