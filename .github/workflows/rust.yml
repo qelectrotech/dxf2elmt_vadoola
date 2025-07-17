@@ -36,7 +36,7 @@ jobs:
       - name: clippy
         if: matrix.os != 'windows' || github.event_name != 'pull_request'
         #run: cargo clippy -- -D warnings
-        run: cargo clippy
+        run: cargo clippy --
 
       - name: test
         if: matrix.os != 'windows' || github.event_name != 'pull_request'
