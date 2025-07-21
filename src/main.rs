@@ -2,8 +2,9 @@
     clippy::all,
     clippy::pedantic,
     //clippy::cargo,
-    rust_2024_compatibility,
+    //rust_2024_compatibility,
 )]
+//#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 extern crate dxf;
 extern crate simple_xml_builder;
@@ -16,8 +17,8 @@ use dxf::Drawing;
 use qelmt::Definition;
 //use rayon::prelude::*;
 use simple_xml_builder::XMLElement;
-use std::path::PathBuf;
 use std::time::Instant;
+use std::{io, path::PathBuf};
 use tracing::{span, trace, warn, Level};
 use tracing_subscriber::prelude::*;
 
@@ -62,16 +63,32 @@ fn main() -> Result<()> {
 
     #[cfg(not(feature = "venator"))]
     let tr_reg = {
-        let file = std::fs::File::create("dxf2elmt.log").unwrap();
-        let debug_log = tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file));
-        tracing_subscriber::registry().with(
-            debug_log
-                .with_file(true)
-                .with_line_number(true)
-                .with_thread_ids(true)
-                .with_ansi(false)
-                .with_filter(tracing_subscriber::EnvFilter::from_env("DXF2E_LOG")),
-        )
+        let file_layer =
+            if let std::result::Result::Ok(file) = std::fs::File::create("dxf2elmt.log") {
+                //if we can create a log file use it
+                Some(tracing_subscriber::fmt::layer().with_writer(std::sync::Arc::new(file)))
+            } else {
+                None
+            };
+
+        let stde_layer = tracing_subscriber::fmt::layer()
+            .pretty()
+            .with_writer(io::stderr);
+        tracing_subscriber::registry()
+            .with(file_layer.map(|fl| {
+                fl.with_file(true)
+                    .with_line_number(true)
+                    .with_thread_ids(true)
+                    .with_ansi(false)
+                    .with_filter(tracing_subscriber::EnvFilter::from_env("DXF2E_LOG"))
+            }))
+            .with(
+                stde_layer
+                    .with_file(true)
+                    .with_line_number(true)
+                    .with_thread_ids(true)
+                    .with_filter(tracing_subscriber::EnvFilter::from_env("DXF2E_LOG")),
+            )
     };
     tr_reg.init();
 
