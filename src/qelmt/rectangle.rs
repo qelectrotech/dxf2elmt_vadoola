@@ -1,5 +1,5 @@
 use super::{two_dec, Bounding, Rectangularity, ScaleEntity};
-use dxf::entities::{self, LwPolyline, Polyline};
+use dxf::entities::{LwPolyline, Polyline};
 use simple_xml_builder::XMLElement;
 
 #[derive(Debug)]
@@ -39,7 +39,26 @@ impl TryFrom<&Polyline> for Rectangle {
     }
 }
 
-//impl TryFrom<&LwPolyline> for Rectangle {}
+impl TryFrom<&LwPolyline> for Rectangle {
+    type Error = &'static str; //add better error type later
+
+    fn try_from(poly: &LwPolyline) -> Result<Self, Self::Error> {
+        if !poly.is_rectangle() {
+            return Err("LwPolyline does not appear to be rectangular, can't convert");
+        }
+
+        Ok(Rectangle {
+            x: poly.left_bound(),
+            y: poly.top_bound(),
+            height: (poly.bot_bound() - poly.top_bound()).abs(),
+            width: (poly.right_bound() - poly.left_bound()).abs(),
+            rx: 0.0,
+            ry: 0.0,
+            antialias: false,
+            style: "line-style:normal;line-weight:thin;filling:none;color:black".into(),
+        })
+    }
+}
 
 impl From<&Rectangle> for XMLElement {
     fn from(rec: &Rectangle) -> Self {

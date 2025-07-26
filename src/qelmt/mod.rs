@@ -6,6 +6,7 @@ use dynamictext::DTextBuilder;
 use hex_color::HexColor;
 use itertools::Itertools;
 use simple_xml_builder::XMLElement;
+use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::f64::consts::PI;
 use std::fmt::Display;
@@ -117,7 +118,7 @@ impl Bounding for Polyline {
             v1.location
                 .x
                 .partial_cmp(&v2.location.x)
-                .unwrap_or(std::cmp::Ordering::Greater)
+                .unwrap_or(Ordering::Greater)
         }) {
             trace!("Left Bound: {}", vtx.location.x);
             vtx.location.x
@@ -131,7 +132,7 @@ impl Bounding for Polyline {
             v1.location
                 .x
                 .partial_cmp(&v2.location.x)
-                .unwrap_or(std::cmp::Ordering::Less)
+                .unwrap_or(Ordering::Less)
         }) {
             trace!("Right Bound: {}", vtx.location.x);
             vtx.location.x
@@ -145,7 +146,7 @@ impl Bounding for Polyline {
             v1.location
                 .y
                 .partial_cmp(&v2.location.y)
-                .unwrap_or(std::cmp::Ordering::Less)
+                .unwrap_or(Ordering::Less)
         }) {
             trace!("Right Bound: {}", vtx.location.x);
             vtx.location.y
@@ -159,7 +160,7 @@ impl Bounding for Polyline {
             v1.location
                 .y
                 .partial_cmp(&v2.location.y)
-                .unwrap_or(std::cmp::Ordering::Less)
+                .unwrap_or(Ordering::Less)
         }) {
             trace!("Bot Bound: {}", vtx.location.y);
             vtx.location.y
@@ -209,23 +210,71 @@ impl Circularity for Polyline {
 
 impl Rectangularity for Polyline {
     fn is_rectangle(&self) -> bool {
-        //This is probably not the most effecient way, but for now, I'm just trying to
+        //This is probably not the most efficient way, but for now, I'm just trying to
         // get a base something that works
-        // //polyline.__vertices_and_handles.len()
         let vertices: Vec<&dxf::entities::Vertex> = self.vertices().collect();
-        let n = vertices.len();
         let bounding_area = self.bounding_area();
 
-        //calculate area using shoelace algorithm
-        let mut area = 0.0;
-        for i in 0..n {
-            let j = (i + 1) % n;
-            area += (vertices[i].location.x * vertices[j].location.y)
-                - (vertices[j].location.x * vertices[i].location.y);
-        }
-        let area = (area / 2.0).abs();
+        let area = (vertices
+            .iter()
+            .circular_tuple_windows()
+            .map(|(v1, v2)| (v1.location.x * v2.location.y) - (v1.location.y * v2.location.x))
+            .take(vertices.len())
+            .sum::<f64>()
+            / 2.0)
+            .abs();
 
         Self::match_range().contains(&(area / bounding_area))
+    }
+}
+
+impl Bounding for LwPolyline {
+    fn left_bound(&self) -> f64 {
+        if let Some(vtx) = self
+            .vertices
+            .iter()
+            .min_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Greater))
+        {
+            vtx.x
+        } else {
+            0.0
+        }
+    }
+
+    fn right_bound(&self) -> f64 {
+        if let Some(vtx) = self
+            .vertices
+            .iter()
+            .min_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Less))
+        {
+            vtx.x
+        } else {
+            0.0
+        }
+    }
+
+    fn top_bound(&self) -> f64 {
+        if let Some(vtx) = self
+            .vertices
+            .iter()
+            .min_by(|v1, v2| v1.y.partial_cmp(&v2.y).unwrap_or(Ordering::Less))
+        {
+            vtx.y
+        } else {
+            0.0
+        }
+    }
+
+    fn bot_bound(&self) -> f64 {
+        if let Some(vtx) = self
+            .vertices
+            .iter()
+            .min_by(|v1, v2| v1.y.partial_cmp(&v2.y).unwrap_or(Ordering::Less))
+        {
+            vtx.y
+        } else {
+            0.0
+        }
     }
 }
 
@@ -245,20 +294,35 @@ impl Circularity for LwPolyline {
             .take(self.vertices.len())
             .sum();
 
-        let poly_area = {
-            let mut poly_area: f64 = self
-                .vertices
-                .iter()
-                .circular_tuple_windows()
-                .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
-                .take(self.vertices.len())
-                .sum();
-            poly_area /= 2.0;
-            poly_area.abs()
-        };
+        let poly_area = (self
+            .vertices
+            .iter()
+            .circular_tuple_windows()
+            .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
+            .take(self.vertices.len())
+            .sum::<f64>()
+            / 2.0)
+            .abs();
         let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
 
         Self::match_range().contains(&t_ratio)
+    }
+}
+
+impl Rectangularity for LwPolyline {
+    fn is_rectangle(&self) -> bool {
+        let bounding_area = self.bounding_area();
+        let area = (self
+            .vertices
+            .iter()
+            .circular_tuple_windows()
+            .map(|(v1, v2)| (v1.x * v2.y) - (v1.y * v2.x))
+            .take(self.vertices.len())
+            .sum::<f64>()
+            / 2.0)
+            .abs();
+
+        Self::match_range().contains(&(area / bounding_area))
     }
 }
 
@@ -479,7 +543,7 @@ impl Bounding for Objects {
                 let lb = vec.iter().min_by(|ob1, ob2| {
                     ob1.left_bound()
                         .partial_cmp(&ob2.left_bound())
-                        .unwrap_or(std::cmp::Ordering::Greater)
+                        .unwrap_or(Ordering::Greater)
                 });
 
                 if let Some(lb) = lb {
@@ -504,7 +568,7 @@ impl Bounding for Objects {
                 let rb = vec.iter().max_by(|ob1, ob2| {
                     ob1.right_bound()
                         .partial_cmp(&ob2.right_bound())
-                        .unwrap_or(std::cmp::Ordering::Less)
+                        .unwrap_or(Ordering::Less)
                 });
 
                 if let Some(rb) = rb {
@@ -529,7 +593,7 @@ impl Bounding for Objects {
                 let tb = vec.iter().min_by(|ob1, ob2| {
                     ob1.top_bound()
                         .partial_cmp(&ob2.top_bound())
-                        .unwrap_or(std::cmp::Ordering::Greater)
+                        .unwrap_or(Ordering::Greater)
                 });
 
                 if let Some(tb) = tb {
@@ -554,7 +618,7 @@ impl Bounding for Objects {
                 let bb = vec.iter().max_by(|ob1, ob2| {
                     ob1.bot_bound()
                         .partial_cmp(&ob2.bot_bound())
-                        .unwrap_or(std::cmp::Ordering::Less)
+                        .unwrap_or(Ordering::Less)
                 });
 
                 if let Some(bb) = bb {
@@ -836,6 +900,19 @@ impl<'a> ObjectsBuilder<'a> {
                         ellipse.y -= self.offset.y;
 
                         Ok(Objects::Ellipse(ellipse))
+                    } else if let Ok(mut rectangle) = Rectangle::try_from(lwpolyline) {
+                        // Hmm there still seem to be some issues here.
+                        // I have a few examples with a polyline that is a perfect
+                        // rectangle, but it's not a "closed" polyline, and has 5 points.
+                        // it's getting converted as a 5 point polygon, not a rectangle.
+                        // need to dig into why...is the extra point instead of being a closed
+                        // polygon throwing off the area calculation? That would be my guess
+                        rectangle.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        rectangle.x += self.offset.x;
+                        rectangle.y -= self.offset.y;
+
+                        Ok(Objects::Rectangle(rectangle))
                     } else {
                         let mut poly: Polygon = lwpolyline.into();
 
@@ -987,7 +1064,7 @@ impl Bounding for Description {
         let lb = self.objects.iter().min_by(|ob1, ob2| {
             ob1.left_bound()
                 .partial_cmp(&ob2.left_bound())
-                .unwrap_or(std::cmp::Ordering::Greater)
+                .unwrap_or(Ordering::Greater)
         });
 
         if let Some(lb) = lb {
@@ -1001,7 +1078,7 @@ impl Bounding for Description {
         let rb = self.objects.iter().max_by(|ob1, ob2| {
             ob1.right_bound()
                 .partial_cmp(&ob2.right_bound())
-                .unwrap_or(std::cmp::Ordering::Less)
+                .unwrap_or(Ordering::Less)
         });
 
         if let Some(rb) = rb {
@@ -1015,7 +1092,7 @@ impl Bounding for Description {
         let tb = self.objects.iter().min_by(|ob1, ob2| {
             ob1.top_bound()
                 .partial_cmp(&ob2.top_bound())
-                .unwrap_or(std::cmp::Ordering::Greater)
+                .unwrap_or(Ordering::Greater)
         });
 
         if let Some(tb) = tb {
@@ -1029,7 +1106,7 @@ impl Bounding for Description {
         let bb = self.objects.iter().max_by(|ob1, ob2| {
             ob1.bot_bound()
                 .partial_cmp(&ob2.bot_bound())
-                .unwrap_or(std::cmp::Ordering::Less)
+                .unwrap_or(Ordering::Less)
         });
 
         if let Some(bb) = bb {
