@@ -31,6 +31,9 @@ pub use polygon::Polygon;
 pub mod ellipse;
 pub use ellipse::Ellipse;
 
+pub mod rectangle;
+pub use rectangle::Rectangle;
+
 fn find_block<'a>(drw: &'a Drawing, name: &str) -> Option<&'a Block> {
     //this is ugly there has to be a cleaner way to filter this....but for my first attempt at pulling the
     //blocks out of the drawing it works.
@@ -65,25 +68,23 @@ pub struct Definition {
     //counts
 }
 
-//Since the ScaleEntity trait was added to all the objects/elements
-//and I need to add the get bounds to all it probably makes sense to have
-
-//them all within the same trait instead of multiple traits, as a collective
-//set of functions needed by the objects...but I should probably come up with
-//a better trait name then. For now I'll leave it and just get the code working
-trait ScaleEntity {
-    fn scale(&mut self, fact_x: f64, fact_y: f64);
-
+trait Bounding {
     fn left_bound(&self) -> f64;
     fn right_bound(&self) -> f64;
 
     fn top_bound(&self) -> f64;
     fn bot_bound(&self) -> f64;
+
+    fn bounding_area(&self) -> f64 {
+        ((self.right_bound() - self.left_bound()) * (self.bot_bound() - self.top_bound())).abs()
+    }
 }
 
-trait Circularity {
-    fn is_circular(&self) -> bool;
+trait ScaleEntity: Bounding {
+    fn scale(&mut self, fact_x: f64, fact_y: f64);
+}
 
+trait Arity {
     fn match_range() -> std::ops::RangeInclusive<f64> {
         //this boundary of 2% has been chosen arbitrarily, I might adjust this later
         //I know in one of my sample files, I'm getting a value of 0.99....
@@ -94,6 +95,81 @@ trait Circularity {
         0.98..=1.02
     }
 }
+
+trait Circularity: Arity {
+    fn is_circular(&self) -> bool;
+}
+
+trait Rectangularity: Arity {
+    fn is_rectangle(&self) -> bool;
+}
+
+impl Bounding for Polyline {
+    fn left_bound(&self) -> f64 {
+        if let Some(vtx) = self.vertices().min_by(|v1, v2| {
+            trace!(
+                "Vtx's Found: x1({}) / y1({}) => x2({}) / y2({})",
+                v1.location.x,
+                v1.location.y,
+                v2.location.x,
+                v2.location.y
+            );
+            v1.location
+                .x
+                .partial_cmp(&v2.location.x)
+                .unwrap_or(std::cmp::Ordering::Greater)
+        }) {
+            trace!("Left Bound: {}", vtx.location.x);
+            vtx.location.x
+        } else {
+            0.0
+        }
+    }
+
+    fn right_bound(&self) -> f64 {
+        if let Some(vtx) = self.vertices().max_by(|v1, v2| {
+            v1.location
+                .x
+                .partial_cmp(&v2.location.x)
+                .unwrap_or(std::cmp::Ordering::Less)
+        }) {
+            trace!("Right Bound: {}", vtx.location.x);
+            vtx.location.x
+        } else {
+            0.0
+        }
+    }
+
+    fn top_bound(&self) -> f64 {
+        if let Some(vtx) = self.vertices().max_by(|v1, v2| {
+            v1.location
+                .y
+                .partial_cmp(&v2.location.y)
+                .unwrap_or(std::cmp::Ordering::Less)
+        }) {
+            trace!("Right Bound: {}", vtx.location.x);
+            vtx.location.y
+        } else {
+            0.0
+        }
+    }
+
+    fn bot_bound(&self) -> f64 {
+        if let Some(vtx) = self.vertices().min_by(|v1, v2| {
+            v1.location
+                .y
+                .partial_cmp(&v2.location.y)
+                .unwrap_or(std::cmp::Ordering::Less)
+        }) {
+            trace!("Bot Bound: {}", vtx.location.y);
+            vtx.location.y
+        } else {
+            0.0
+        }
+    }
+}
+
+impl Arity for Polyline {}
 
 impl Circularity for Polyline {
     fn is_circular(&self) -> bool {
@@ -130,6 +206,30 @@ impl Circularity for Polyline {
         Self::match_range().contains(&t_ratio)
     }
 }
+
+impl Rectangularity for Polyline {
+    fn is_rectangle(&self) -> bool {
+        //This is probably not the most effecient way, but for now, I'm just trying to
+        // get a base something that works
+        // //polyline.__vertices_and_handles.len()
+        let vertices: Vec<&dxf::entities::Vertex> = self.vertices().collect();
+        let n = vertices.len();
+        let bounding_area = self.bounding_area();
+
+        //calculate area using shoelace algorithm
+        let mut area = 0.0;
+        for i in 0..n {
+            let j = (i + 1) % n;
+            area += (vertices[i].location.x * vertices[j].location.y)
+                - (vertices[j].location.x * vertices[i].location.y);
+        }
+        let area = (area / 2.0).abs();
+
+        Self::match_range().contains(&(area / bounding_area))
+    }
+}
+
+impl Arity for LwPolyline {}
 
 impl Circularity for LwPolyline {
     fn is_circular(&self) -> bool {
@@ -305,6 +405,7 @@ pub(crate) enum Objects {
     Arc(Arc),
     Ellipse(Ellipse),
     Polygon(Polygon),
+    Rectangle(Rectangle),
     DynamicText(DynamicText),
     Text(Text),
     Line(Line),
@@ -364,24 +465,13 @@ impl<'a> Iterator for Children<'a> {
     }
 }
 
-impl ScaleEntity for Objects {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        match self {
-            Objects::Arc(arc) => arc.scale(fact_x, fact_y),
-            Objects::Ellipse(ellipse) => ellipse.scale(fact_x, fact_y),
-            Objects::Polygon(polygon) => polygon.scale(fact_x, fact_y),
-            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact_x, fact_y),
-            Objects::Text(text) => text.scale(fact_x, fact_y),
-            Objects::Line(line) => line.scale(fact_x, fact_y),
-            Objects::Group(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
-        }
-    }
-
+impl Bounding for Objects {
     fn left_bound(&self) -> f64 {
         match self {
             Objects::Arc(arc) => arc.left_bound(),
             Objects::Ellipse(ellipse) => ellipse.left_bound(),
             Objects::Polygon(polygon) => polygon.left_bound(),
+            Objects::Rectangle(rectangle) => rectangle.left_bound(),
             Objects::DynamicText(dynamic_text) => dynamic_text.left_bound(),
             Objects::Text(text) => text.left_bound(),
             Objects::Line(line) => line.left_bound(),
@@ -406,6 +496,7 @@ impl ScaleEntity for Objects {
             Objects::Arc(arc) => arc.right_bound(),
             Objects::Ellipse(ellipse) => ellipse.right_bound(),
             Objects::Polygon(polygon) => polygon.right_bound(),
+            Objects::Rectangle(rectangle) => rectangle.right_bound(),
             Objects::DynamicText(dynamic_text) => dynamic_text.right_bound(),
             Objects::Text(text) => text.right_bound(),
             Objects::Line(line) => line.right_bound(),
@@ -430,6 +521,7 @@ impl ScaleEntity for Objects {
             Objects::Arc(arc) => arc.top_bound(),
             Objects::Ellipse(ellipse) => ellipse.top_bound(),
             Objects::Polygon(polygon) => polygon.top_bound(),
+            Objects::Rectangle(rectangle) => rectangle.top_bound(),
             Objects::DynamicText(dynamic_text) => dynamic_text.top_bound(),
             Objects::Text(text) => text.top_bound(),
             Objects::Line(line) => line.top_bound(),
@@ -454,6 +546,7 @@ impl ScaleEntity for Objects {
             Objects::Arc(arc) => arc.bot_bound(),
             Objects::Ellipse(ellipse) => ellipse.bot_bound(),
             Objects::Polygon(polygon) => polygon.bot_bound(),
+            Objects::Rectangle(rectangle) => rectangle.bot_bound(),
             Objects::DynamicText(dynamic_text) => dynamic_text.bot_bound(),
             Objects::Text(text) => text.bot_bound(),
             Objects::Line(line) => line.bot_bound(),
@@ -470,6 +563,21 @@ impl ScaleEntity for Objects {
                     0.0
                 }
             }
+        }
+    }
+}
+
+impl ScaleEntity for Objects {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        match self {
+            Objects::Arc(arc) => arc.scale(fact_x, fact_y),
+            Objects::Ellipse(ellipse) => ellipse.scale(fact_x, fact_y),
+            Objects::Polygon(polygon) => polygon.scale(fact_x, fact_y),
+            Objects::Rectangle(rectangle) => rectangle.scale(fact_x, fact_y),
+            Objects::DynamicText(dynamic_text) => dynamic_text.scale(fact_x, fact_y),
+            Objects::Text(text) => text.scale(fact_x, fact_y),
+            Objects::Line(line) => line.scale(fact_x, fact_y),
+            Objects::Group(vec) => vec.iter_mut().for_each(|ob| ob.scale(fact_x, fact_y)),
         }
     }
 }
@@ -684,6 +792,13 @@ impl<'a> ObjectsBuilder<'a> {
                         ellipse.y -= self.offset.y;
 
                         Ok(Objects::Ellipse(ellipse))
+                    } else if let Ok(mut rectangle) = Rectangle::try_from(polyline) {
+                        rectangle.scale(self.scale_fact.x, self.scale_fact.y);
+
+                        rectangle.x += self.offset.x;
+                        rectangle.y -= self.offset.y;
+
+                        Ok(Objects::Rectangle(rectangle))
                     } else {
                         let mut poly: Polygon = polyline.into();
 
@@ -830,6 +945,7 @@ impl From<&Objects> for Either<XMLElement, Vec<XMLElement>> {
             Objects::Arc(arc) => Either::Left(arc.into()),
             Objects::Ellipse(ell) => Either::Left(ell.into()),
             Objects::Polygon(poly) => Either::Left(poly.into()),
+            Objects::Rectangle(rect) => Either::Left(rect.into()),
             Objects::DynamicText(dtext) => Either::Left(dtext.into()),
             Objects::Text(txt) => Either::Left(txt.into()),
             Objects::Line(line) => Either::Left(line.into()),
@@ -852,6 +968,7 @@ impl TryFrom<&Objects> for XMLElement {
             Objects::Arc(arc) => Ok(arc.into()),
             Objects::Ellipse(ell) => Ok(ell.into()),
             Objects::Polygon(poly) => Ok(poly.into()),
+            Objects::Rectangle(rect) => Ok(rect.into()),
             Objects::DynamicText(dtext) => Ok(dtext.into()),
             Objects::Text(txt) => Ok(txt.into()),
             Objects::Line(line) => Ok(line.into()),
@@ -865,13 +982,7 @@ pub struct Description {
     objects: Vec<Objects>,
 }
 
-impl ScaleEntity for Description {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.objects
-            .iter_mut()
-            .for_each(|ob| ob.scale(fact_x, fact_y));
-    }
-
+impl Bounding for Description {
     fn left_bound(&self) -> f64 {
         let lb = self.objects.iter().min_by(|ob1, ob2| {
             ob1.left_bound()
@@ -926,6 +1037,14 @@ impl ScaleEntity for Description {
         } else {
             0.0
         }
+    }
+}
+
+impl ScaleEntity for Description {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.objects
+            .iter_mut()
+            .for_each(|ob| ob.scale(fact_x, fact_y));
     }
 }
 

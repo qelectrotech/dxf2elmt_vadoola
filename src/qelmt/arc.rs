@@ -1,3 +1,5 @@
+use crate::qelmt::Bounding;
+
 use super::{two_dec, ScaleEntity};
 use dxf::entities;
 use simple_xml_builder::XMLElement;
@@ -55,7 +57,7 @@ impl From<&entities::Arc> for Arc {
 
 impl From<&Arc> for XMLElement {
     fn from(arc: &Arc) -> Self {
-        let mut arc_xml: XMLElement = XMLElement::new("arc");
+        let mut arc_xml = XMLElement::new("arc");
         arc_xml.add_attribute("x", two_dec(arc.x));
         arc_xml.add_attribute("y", two_dec(arc.y));
         arc_xml.add_attribute("width", two_dec(arc.width));
@@ -68,14 +70,7 @@ impl From<&Arc> for XMLElement {
     }
 }
 
-impl ScaleEntity for Arc {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.x *= fact_x;
-        self.y *= fact_y;
-        self.width *= fact_x;
-        self.height *= fact_y;
-    }
-
+impl Bounding for Arc {
     fn left_bound(&self) -> f64 {
         self.x
     }
@@ -90,5 +85,14 @@ impl ScaleEntity for Arc {
 
     fn bot_bound(&self) -> f64 {
         self.y + self.height
+    }
+}
+
+impl ScaleEntity for Arc {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        self.width *= fact_x;
+        self.height *= fact_y;
     }
 }

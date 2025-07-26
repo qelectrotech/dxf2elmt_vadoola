@@ -1,3 +1,5 @@
+use crate::qelmt::Bounding;
+
 use super::{two_dec, FontInfo, ScaleEntity, TextEntity};
 use dxf::entities::{self, AttributeDefinition};
 use hex_color::HexColor;
@@ -110,14 +112,7 @@ impl From<&DynamicText> for XMLElement {
     }
 }
 
-impl ScaleEntity for DynamicText {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.x *= fact_x;
-        self.y *= fact_y;
-        //self.font.pixel_size *= fact;
-        self.font.point_size *= fact_x;
-    }
-
+impl Bounding for DynamicText {
     fn left_bound(&self) -> f64 {
         self.x
     }
@@ -134,6 +129,15 @@ impl ScaleEntity for DynamicText {
     fn bot_bound(&self) -> f64 {
         //todo!()
         1.0
+    }
+}
+
+impl ScaleEntity for DynamicText {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        //self.font.pixel_size *= fact;
+        self.font.point_size *= fact_x;
     }
 }
 

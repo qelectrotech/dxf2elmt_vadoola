@@ -1,4 +1,4 @@
-use super::{two_dec, Circularity, ScaleEntity};
+use super::{two_dec, Bounding, Circularity, ScaleEntity};
 use dxf::entities::{self, Circle, LwPolyline, Polyline};
 use simple_xml_builder::XMLElement;
 
@@ -62,7 +62,7 @@ impl TryFrom<&Polyline> for Ellipse {
 
         //I did this fold because min requires the vertex to have the Ordering trait
         //but I forogot min_by exists taking a lambda, so I could compare them using
-        //the value I need. However my first quick attemp wasn't working
+        //the value I need. However my first quick attempt wasn't working
         //Using min_by would probably be more effecietn than the fold
         //So this is probably worth coming back to...but it's a low priority
         //because the below code works.
@@ -140,7 +140,7 @@ impl TryFrom<&LwPolyline> for Ellipse {
 
 impl From<&Ellipse> for XMLElement {
     fn from(ell: &Ellipse) -> Self {
-        let mut ell_xml: XMLElement = XMLElement::new("ellipse");
+        let mut ell_xml = XMLElement::new("ellipse");
         ell_xml.add_attribute("x", two_dec(ell.x));
         ell_xml.add_attribute("y", two_dec(ell.y));
         ell_xml.add_attribute("width", two_dec(ell.width));
@@ -151,14 +151,7 @@ impl From<&Ellipse> for XMLElement {
     }
 }
 
-impl ScaleEntity for Ellipse {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.x *= fact_x;
-        self.y *= fact_y;
-        self.width *= fact_x;
-        self.height *= fact_y;
-    }
-
+impl Bounding for Ellipse {
     fn left_bound(&self) -> f64 {
         self.x
     }
@@ -173,5 +166,14 @@ impl ScaleEntity for Ellipse {
 
     fn bot_bound(&self) -> f64 {
         self.y + self.height
+    }
+}
+
+impl ScaleEntity for Ellipse {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        self.width *= fact_x;
+        self.height *= fact_y;
     }
 }
