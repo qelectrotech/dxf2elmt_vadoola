@@ -1,6 +1,7 @@
 use super::{two_dec, Bounding, Rectangularity, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline};
 use simple_xml_builder::XMLElement;
+use tracing::debug;
 
 #[derive(Debug)]
 pub struct Rectangle {
@@ -28,7 +29,7 @@ impl TryFrom<&Polyline> for Rectangle {
 
         Ok(Rectangle {
             x: poly.left_bound(),
-            y: poly.top_bound(),
+            y: -poly.top_bound(),
             height: (poly.bot_bound() - poly.top_bound()).abs(),
             width: (poly.right_bound() - poly.left_bound()).abs(),
             rx: 0.0,
@@ -49,7 +50,7 @@ impl TryFrom<&LwPolyline> for Rectangle {
 
         Ok(Rectangle {
             x: poly.left_bound(),
-            y: poly.top_bound(),
+            y: -poly.top_bound(),
             height: (poly.bot_bound() - poly.top_bound()).abs(),
             width: (poly.right_bound() - poly.left_bound()).abs(),
             rx: 0.0,

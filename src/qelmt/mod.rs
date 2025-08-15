@@ -12,7 +12,7 @@ use std::f64::consts::PI;
 use std::fmt::Display;
 use uuid::Uuid;
 
-use tracing::{error, info, span, trace, Level};
+use tracing::{debug, error, info, span, trace, Level};
 
 pub mod arc;
 pub use arc::Arc;
@@ -108,19 +108,11 @@ trait Rectangularity: Arity {
 impl Bounding for Polyline {
     fn left_bound(&self) -> f64 {
         if let Some(vtx) = self.vertices().min_by(|v1, v2| {
-            trace!(
-                "Vtx's Found: x1({}) / y1({}) => x2({}) / y2({})",
-                v1.location.x,
-                v1.location.y,
-                v2.location.x,
-                v2.location.y
-            );
             v1.location
                 .x
                 .partial_cmp(&v2.location.x)
                 .unwrap_or(Ordering::Greater)
         }) {
-            trace!("Left Bound: {}", vtx.location.x);
             vtx.location.x
         } else {
             0.0
@@ -134,7 +126,6 @@ impl Bounding for Polyline {
                 .partial_cmp(&v2.location.x)
                 .unwrap_or(Ordering::Less)
         }) {
-            trace!("Right Bound: {}", vtx.location.x);
             vtx.location.x
         } else {
             0.0
@@ -148,7 +139,6 @@ impl Bounding for Polyline {
                 .partial_cmp(&v2.location.y)
                 .unwrap_or(Ordering::Less)
         }) {
-            trace!("Right Bound: {}", vtx.location.x);
             vtx.location.y
         } else {
             0.0
@@ -162,7 +152,6 @@ impl Bounding for Polyline {
                 .partial_cmp(&v2.location.y)
                 .unwrap_or(Ordering::Less)
         }) {
-            trace!("Bot Bound: {}", vtx.location.y);
             vtx.location.y
         } else {
             0.0
@@ -230,11 +219,10 @@ impl Rectangularity for Polyline {
 
 impl Bounding for LwPolyline {
     fn left_bound(&self) -> f64 {
-        if let Some(vtx) = self
-            .vertices
-            .iter()
-            .min_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Greater))
-        {
+        if let Some(vtx) = self.vertices.iter().min_by(|v1, v2| {
+            debug!("Looking for Minimum of {} and {}", v1.x, v2.x);
+            v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Greater)
+        }) {
             vtx.x
         } else {
             0.0
@@ -245,7 +233,7 @@ impl Bounding for LwPolyline {
         if let Some(vtx) = self
             .vertices
             .iter()
-            .min_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Less))
+            .max_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Less))
         {
             vtx.x
         } else {
@@ -257,7 +245,7 @@ impl Bounding for LwPolyline {
         if let Some(vtx) = self
             .vertices
             .iter()
-            .min_by(|v1, v2| v1.y.partial_cmp(&v2.y).unwrap_or(Ordering::Less))
+            .max_by(|v1, v2| v1.y.partial_cmp(&v2.y).unwrap_or(Ordering::Less))
         {
             vtx.y
         } else {
