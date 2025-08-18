@@ -95,6 +95,19 @@ trait Arity {
         //for a specific type
         0.98..=1.02
     }
+
+    // Uses the Shoelace Formula to calculate the area of a polygon from an
+    // iterator of coordinates
+    fn area<'a>(coords: impl Iterator<Item = &'a dxf::Point> + Clone + ExactSizeIterator) -> f64 {
+        let len = coords.len();
+        (coords
+            .circular_tuple_windows()
+            .map(|(v1, v2)| (v1.x * v2.y) - (v1.y * v2.x))
+            .take(len)
+            .sum::<f64>()
+            / 2.0)
+            .abs()
+    }
 }
 
 trait Circularity: Arity {
@@ -102,7 +115,7 @@ trait Circularity: Arity {
 }
 
 trait Rectangularity: Arity {
-    fn is_rectangle(&self) -> bool;
+    fn is_rectangular(&self) -> bool;
 }
 
 impl Bounding for Polyline {
@@ -163,7 +176,7 @@ impl Arity for Polyline {}
 
 impl Circularity for Polyline {
     fn is_circular(&self) -> bool {
-        let poly_perim: f64 = {
+        let perim: f64 = {
             let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
             let len = tmp_pts.len();
             tmp_pts
@@ -174,55 +187,31 @@ impl Circularity for Polyline {
                 .sum()
         };
 
-        let poly_area = {
-            //because instead of being able to access the Vec like in LwPolyline, vertices() returns
-            //an iter of dxf Vertex's which don't implement clone so I can't use circular_tuple_windows
-            //there is probably a cleaner way of iterating over this, but it's late, I'm getting tired
-            //and just want to see if this basic idea will work on my sample file, or see if I'm chasing
-            //up the wrong tree.
-            let tmp_pts: Vec<dxf::Point> = self.vertices().map(|v| v.clone().location).collect();
-            let len = tmp_pts.len();
-            let mut poly_area: f64 = tmp_pts
-                .into_iter()
-                .circular_tuple_windows()
-                .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
-                .take(len)
-                .sum();
-            poly_area /= 2.0;
-            poly_area.abs()
-        };
-        let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+        let vertices: Vec<_> = self.vertices().map(|v| &v.location).collect();
+        let area = Polyline::area(vertices.into_iter());
+        let t_ratio = 4.0 * PI * area / perim.powf(2.0);
 
         Self::match_range().contains(&t_ratio)
     }
 }
 
 impl Rectangularity for Polyline {
-    fn is_rectangle(&self) -> bool {
-        //This is probably not the most efficient way, but for now, I'm just trying to
-        // get a base something that works
-        let vertices: Vec<&dxf::entities::Vertex> = self.vertices().collect();
+    fn is_rectangular(&self) -> bool {
+        let vertices: Vec<_> = self.vertices().map(|v| &v.location).collect();
         let bounding_area = self.bounding_area();
 
-        let area = (vertices
-            .iter()
-            .circular_tuple_windows()
-            .map(|(v1, v2)| (v1.location.x * v2.location.y) - (v1.location.y * v2.location.x))
-            .take(vertices.len())
-            .sum::<f64>()
-            / 2.0)
-            .abs();
-
+        let area = Polyline::area(vertices.into_iter());
         Self::match_range().contains(&(area / bounding_area))
     }
 }
 
 impl Bounding for LwPolyline {
     fn left_bound(&self) -> f64 {
-        if let Some(vtx) = self.vertices.iter().min_by(|v1, v2| {
-            debug!("Looking for Minimum of {} and {}", v1.x, v2.x);
-            v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Greater)
-        }) {
+        if let Some(vtx) = self
+            .vertices
+            .iter()
+            .min_by(|v1, v2| v1.x.partial_cmp(&v2.x).unwrap_or(Ordering::Greater))
+        {
             vtx.x
         } else {
             0.0
@@ -270,7 +259,7 @@ impl Arity for LwPolyline {}
 
 impl Circularity for LwPolyline {
     fn is_circular(&self) -> bool {
-        let poly_perim: f64 = self
+        let perim: f64 = self
             .vertices
             .iter()
             .circular_tuple_windows()
@@ -282,33 +271,28 @@ impl Circularity for LwPolyline {
             .take(self.vertices.len())
             .sum();
 
-        let poly_area = (self
+        let vertices: Vec<_> = self
             .vertices
             .iter()
-            .circular_tuple_windows()
-            .map(|(fst, sec)| (fst.x * sec.y) - (fst.y * sec.x))
-            .take(self.vertices.len())
-            .sum::<f64>()
-            / 2.0)
-            .abs();
-        let t_ratio = 4.0 * PI * poly_area / poly_perim.powf(2.0);
+            .map(|v| dxf::Point::new(v.x, v.y, 0.0))
+            .collect();
+
+        let area = LwPolyline::area(vertices.iter());
+        let t_ratio = 4.0 * PI * area / perim.powf(2.0);
 
         Self::match_range().contains(&t_ratio)
     }
 }
 
 impl Rectangularity for LwPolyline {
-    fn is_rectangle(&self) -> bool {
+    fn is_rectangular(&self) -> bool {
         let bounding_area = self.bounding_area();
-        let area = (self
+        let vertices: Vec<_> = self
             .vertices
             .iter()
-            .circular_tuple_windows()
-            .map(|(v1, v2)| (v1.x * v2.y) - (v1.y * v2.x))
-            .take(self.vertices.len())
-            .sum::<f64>()
-            / 2.0)
-            .abs();
+            .map(|v| dxf::Point::new(v.x, v.y, 0.0))
+            .collect();
+        let area = LwPolyline::area(vertices.iter());
 
         Self::match_range().contains(&(area / bounding_area))
     }

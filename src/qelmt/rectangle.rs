@@ -23,7 +23,7 @@ impl TryFrom<&Polyline> for Rectangle {
     type Error = &'static str; //add better error type later
 
     fn try_from(poly: &Polyline) -> Result<Self, Self::Error> {
-        if !poly.is_rectangle() {
+        if !poly.is_rectangular() {
             return Err("Polyline does not appear to be rectangular, can't convert");
         }
 
@@ -44,7 +44,7 @@ impl TryFrom<&LwPolyline> for Rectangle {
     type Error = &'static str; //add better error type later
 
     fn try_from(poly: &LwPolyline) -> Result<Self, Self::Error> {
-        if !poly.is_rectangle() {
+        if !poly.is_rectangular() {
             return Err("LwPolyline does not appear to be rectangular, can't convert");
         }
 
