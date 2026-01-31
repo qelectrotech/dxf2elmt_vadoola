@@ -1,3 +1,5 @@
+use crate::qelmt::Bounding;
+
 use super::two_dec;
 use super::LineEnd;
 use super::ScaleEntity;
@@ -156,7 +158,7 @@ impl From<&entities::Leader> for Leader {
 
 impl From<&Line> for XMLElement {
     fn from(line: &Line) -> Self {
-        let mut line_xml: XMLElement = XMLElement::new("line");
+        let mut line_xml = XMLElement::new("line");
         line_xml.add_attribute("x1", two_dec(line.x1));
         line_xml.add_attribute("y1", two_dec(line.y1));
         line_xml.add_attribute("length1", two_dec(line.length1));
@@ -168,6 +170,24 @@ impl From<&Line> for XMLElement {
         line_xml.add_attribute("antialias", line.antialias);
         line_xml.add_attribute("style", &line.style);
         line_xml
+    }
+}
+
+impl Bounding for Line {
+    fn left_bound(&self) -> f64 {
+        self.x1.min(self.x2)
+    }
+
+    fn right_bound(&self) -> f64 {
+        self.x1.max(self.x2)
+    }
+
+    fn top_bound(&self) -> f64 {
+        self.y1.min(self.y2)
+    }
+
+    fn bot_bound(&self) -> f64 {
+        self.y1.max(self.y2)
     }
 }
 
@@ -191,21 +211,5 @@ impl ScaleEntity for Line {
 
         self.length2 *= fact_x.min(fact_y);
         self.length2 = self.length2.min(99.0);
-    }
-
-    fn left_bound(&self) -> f64 {
-        self.x1.min(self.x2)
-    }
-
-    fn right_bound(&self) -> f64 {
-        self.x1.max(self.x2)
-    }
-
-    fn top_bound(&self) -> f64 {
-        self.y1.min(self.y2)
-    }
-
-    fn bot_bound(&self) -> f64 {
-        self.y1.max(self.y2)
     }
 }

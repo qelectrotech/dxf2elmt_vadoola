@@ -1,3 +1,5 @@
+use crate::qelmt::Bounding;
+
 use super::{two_dec, FontInfo, ScaleEntity};
 use dxf::entities;
 use hex_color::HexColor;
@@ -37,7 +39,7 @@ impl From<(&entities::Text, HexColor)> for Text {
 
 impl From<&Text> for XMLElement {
     fn from(txt: &Text) -> Self {
-        let mut txt_xml: XMLElement = XMLElement::new("text");
+        let mut txt_xml = XMLElement::new("text");
         txt_xml.add_attribute("x", two_dec(txt.x));
         txt_xml.add_attribute("y", two_dec(txt.y));
         txt_xml.add_attribute("rotation", two_dec(txt.rotation));
@@ -48,14 +50,7 @@ impl From<&Text> for XMLElement {
     }
 }
 
-impl ScaleEntity for Text {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.x *= fact_x;
-        self.y *= fact_y;
-        //self.font.pixel_size *= fact;
-        self.font.point_size *= fact_x;
-    }
-
+impl Bounding for Text {
     fn left_bound(&self) -> f64 {
         self.x
     }
@@ -72,5 +67,14 @@ impl ScaleEntity for Text {
     fn bot_bound(&self) -> f64 {
         //need to be able to measure text size to get this
         todo!()
+    }
+}
+
+impl ScaleEntity for Text {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.x *= fact_x;
+        self.y *= fact_y;
+        //self.font.pixel_size *= fact;
+        self.font.point_size *= fact_x;
     }
 }

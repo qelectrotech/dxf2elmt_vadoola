@@ -1,3 +1,5 @@
+use crate::qelmt::Bounding;
+
 use super::{two_dec, ScaleEntity};
 use dxf::entities::{LwPolyline, Polyline, Solid, Spline};
 use simple_xml_builder::XMLElement;
@@ -196,7 +198,7 @@ impl From<&Solid> for Polygon {
 
 impl From<&Polygon> for XMLElement {
     fn from(poly: &Polygon) -> Self {
-        let mut poly_xml: XMLElement = XMLElement::new("polygon");
+        let mut poly_xml = XMLElement::new("polygon");
 
         for (count, coord) in poly.coordinates.iter().enumerate() {
             poly_xml.add_attribute(format!("x{}", (count + 1)), two_dec(coord.x));
@@ -214,14 +216,7 @@ impl From<&Polygon> for XMLElement {
     }
 }
 
-impl ScaleEntity for Polygon {
-    fn scale(&mut self, fact_x: f64, fact_y: f64) {
-        self.coordinates.iter_mut().for_each(|coord| {
-            coord.x *= fact_x;
-            coord.y *= fact_y;
-        });
-    }
-
+impl Bounding for Polygon {
     fn left_bound(&self) -> f64 {
         let min_coord = self.coordinates.iter().min_by(|c1, c2| {
             //if we get a None for the compare, then just returns Greater which will ignore it
@@ -278,5 +273,14 @@ impl ScaleEntity for Polygon {
         } else {
             0.0
         }
+    }
+}
+
+impl ScaleEntity for Polygon {
+    fn scale(&mut self, fact_x: f64, fact_y: f64) {
+        self.coordinates.iter_mut().for_each(|coord| {
+            coord.x *= fact_x;
+            coord.y *= fact_y;
+        });
     }
 }
